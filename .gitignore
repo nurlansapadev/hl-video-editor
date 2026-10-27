@@ -1,0 +1,20 @@
+# ключи API — только у Nurlan, никогда не в git
+keys.json
+
+# окружение и зависимости (ставятся заново: requirements.txt, engine/package.json)
+.venv/
+engine/node_modules/
+__pycache__/
+*.pyc
+
+# локальное
+.idea/
+_backup/
+data/tavily_usage.json
+
+# медиа — не в git (тяжёлые)
+*.mp4
+*.mov
+*.wav
+*.mp3
+Thumbs.db

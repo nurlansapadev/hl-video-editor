@@ -1,0 +1,734 @@
+{
+  "_about": "Places for [КАРТА]: name -> lat, lon (decimal degrees). Grows per episode: new places are added at step 0 (episode passport) after Nurlan confirms.",
+  "New York": {
+    "lat": 40.7128,
+    "lon": -74.006,
+    "aliases": [
+      "New York City",
+      "NYC",
+      "Manhattan"
+    ]
+  },
+  "Washington": {
+    "lat": 38.9072,
+    "lon": -77.0369,
+    "aliases": [
+      "Washington, D.C.",
+      "Washington DC",
+      "D.C."
+    ]
+  },
+  "New Jersey": {
+    "lat": 40.0583,
+    "lon": -74.4057,
+    "aliases": [
+      "NJ"
+    ]
+  },
+  "Camp Century": {
+    "lat": 77.1667,
+    "lon": -61.1333,
+    "aliases": [
+      "City Under the Ice",
+      "Camp Century, Greenland"
+    ]
+  },
+  "Thule Air Base": {
+    "lat": 76.5312,
+    "lon": -68.7031,
+    "aliases": [
+      "Thule",
+      "Thule AB",
+      "Pituffik Space Base",
+      "Pituffik"
+    ]
+  },
+  "Thule B-52 crash site": {
+    "lat": 76.5278,
+    "lon": -69.2819,
+    "aliases": [
+      "North Star Bay",
+      "Thule accident 1968"
+    ]
+  },
+  "Copenhagen": {
+    "lat": 55.6761,
+    "lon": 12.5683,
+    "aliases": [
+      "København"
+    ]
+  },
+  "The Pentagon": {
+    "lat": 38.8719,
+    "lon": -77.0563,
+    "aliases": [
+      "Pentagon"
+    ]
+  },
+  "White House": {
+    "lat": 38.8977,
+    "lon": -77.0365,
+    "aliases": [
+      "The White House"
+    ]
+  },
+  "Kansas": {
+    "lat": 38.5,
+    "lon": -98.0,
+    "aliases": []
+  },
+  "Los Angeles": {
+    "lat": 34.0522,
+    "lon": -118.2437,
+    "aliases": [
+      "LA"
+    ]
+  },
+  "Moscow": {
+    "lat": 55.7558,
+    "lon": 37.6173,
+    "aliases": [
+      "Soviet Union"
+    ]
+  },
+  "Omaha Beach": {
+    "lat": 49.369,
+    "lon": -0.8817,
+    "aliases": [
+      "Normandy"
+    ]
+  },
+  "Torgau": {
+    "lat": 51.5604,
+    "lon": 13.0057,
+    "aliases": [
+      "Elbe",
+      "Elbe Day"
+    ]
+  },
+  "Evening Star Building": {
+    "lat": 38.8959,
+    "lon": -77.0271,
+    "aliases": [
+      "The Washington Star building",
+      "1101 Pennsylvania Avenue NW"
+    ]
+  },
+  "U.S. Capitol": {
+    "lat": 38.8899,
+    "lon": -77.0091,
+    "aliases": [
+      "Capitol Hill",
+      "Congress"
+    ]
+  },
+  "E. Barrett Prettyman Courthouse": {
+    "lat": 38.8928,
+    "lon": -77.0167,
+    "aliases": [
+      "U.S. Court of Appeals for the D.C. Circuit",
+      "federal appeals court in Washington"
+    ]
+  },
+  "Pittsburgh": {
+    "lat": 40.4406,
+    "lon": -79.9959,
+    "aliases": []
+  },
+  "Michigan State University": {
+    "lat": 42.7018,
+    "lon": -84.4822,
+    "aliases": [
+      "Michigan State",
+      "MSU"
+    ]
+  },
+  "East Lansing": {
+    "lat": 42.737,
+    "lon": -84.4839,
+    "aliases": []
+  },
+  "Detroit": {
+    "lat": 42.3314,
+    "lon": -83.0458,
+    "aliases": []
+  },
+  "Flint": {
+    "lat": 43.0125,
+    "lon": -83.6875,
+    "aliases": []
+  },
+  "Escanaba": {
+    "lat": 45.7453,
+    "lon": -87.0646,
+    "aliases": []
+  },
+  "Marquette": {
+    "lat": 46.5436,
+    "lon": -87.3954,
+    "aliases": []
+  },
+  "Sacramento": {
+    "lat": 38.5816,
+    "lon": -121.4944,
+    "aliases": [
+      "California's capital"
+    ]
+  },
+  "Houston": {
+    "lat": 29.7604,
+    "lon": -95.3698,
+    "aliases": []
+  },
+  "Iowa": {
+    "lat": 41.5868,
+    "lon": -93.625,
+    "aliases": [
+      "Des Moines"
+    ]
+  },
+  "California": {
+    "lat": 36.7783,
+    "lon": -119.4179,
+    "aliases": []
+  },
+  "Atlanta": {
+    "lat": 33.749,
+    "lon": -84.388,
+    "aliases": []
+  },
+  "Charlevoix": {
+    "lat": 45.3181,
+    "lon": -85.2584,
+    "aliases": []
+  },
+  "Honolulu": {
+    "lat": 21.3069,
+    "lon": -157.8583,
+    "aliases": [
+      "Hawaiian Islands",
+      "Sandwich Islands"
+    ]
+  },
+  "Pretoria": {
+    "lat": -25.7479,
+    "lon": 28.2293,
+    "aliases": []
+  },
+  "Union Buildings": {
+    "lat": -25.74,
+    "lon": 28.2122,
+    "aliases": [
+      "Uniegebou"
+    ]
+  },
+  "Johannesburg": {
+    "lat": -26.2041,
+    "lon": 28.0473,
+    "aliases": []
+  },
+  "Houses of Parliament, Cape Town": {
+    "lat": -33.9258,
+    "lon": 18.4199,
+    "aliases": [
+      "South African Parliament",
+      "House of Assembly"
+    ]
+  },
+  "Transvaal": {
+    "lat": -25.5,
+    "lon": 28.5,
+    "aliases": [
+      "Transvaal Province"
+    ]
+  },
+  "Cape of Good Hope": {
+    "lat": -34.3568,
+    "lon": 18.474,
+    "aliases": [
+      "the Cape"
+    ]
+  },
+  "Zurich": {
+    "lat": 47.3769,
+    "lon": 8.5417,
+    "aliases": [
+      "Zürich"
+    ]
+  },
+  "London": {
+    "lat": 51.5074,
+    "lon": -0.1278,
+    "aliases": []
+  },
+  "The Hague": {
+    "lat": 52.0705,
+    "lon": 4.3007,
+    "aliases": [
+      "Den Haag"
+    ]
+  },
+  "France": {
+    "lat": 46.2276,
+    "lon": 2.2137,
+    "aliases": []
+  },
+  "Angola": {
+    "lat": -8.839,
+    "lon": 13.2894,
+    "aliases": [
+      "Luanda"
+    ]
+  },
+  "Mozambique": {
+    "lat": -25.9692,
+    "lon": 32.5732,
+    "aliases": [
+      "Maputo"
+    ]
+  },
+  "Playa del Rey": {
+    "lat": 33.9597,
+    "lon": -118.4345,
+    "aliases": [
+      "Cross Creek",
+      "Cross Creek Apartments",
+      "Cross Creek Village"
+    ]
+  },
+  "Hughes Aircraft El Segundo": {
+    "lat": 33.9192,
+    "lon": -118.4165,
+    "aliases": [
+      "Hughes Aircraft Company",
+      "Hughes Radar Systems Group",
+      "Hughes"
+    ]
+  },
+  "LAX Holiday Inn": {
+    "lat": 33.9456,
+    "lon": -118.379,
+    "aliases": [
+      "Holiday Inn on Century Boulevard",
+      "Holiday Inn near the airport"
+    ]
+  },
+  "Los Angeles Federal Courthouse": {
+    "lat": 34.054,
+    "lon": -118.244,
+    "aliases": [
+      "federal court on First Street",
+      "First Street Courthouse"
+    ]
+  },
+  "Terminal Island": {
+    "lat": 33.728,
+    "lon": -118.269,
+    "aliases": [
+      "FCI Terminal Island"
+    ]
+  },
+  "FCI Memphis": {
+    "lat": 35.219,
+    "lon": -89.991,
+    "aliases": [
+      "Memphis federal prison"
+    ]
+  },
+  "Chicago Polish Consulate": {
+    "lat": 41.9104,
+    "lon": -87.6262,
+    "aliases": [
+      "Polish consulate in Chicago",
+      "Consulate General of the PRL in Chicago"
+    ]
+  },
+  "Chicago": {
+    "lat": 41.8781,
+    "lon": -87.6298,
+    "aliases": [
+      "Illinois"
+    ]
+  },
+  "Capitol Hill": {
+    "lat": 38.8899,
+    "lon": -77.0091,
+    "aliases": [
+      "U.S. Senate",
+      "Permanent Subcommittee on Investigations"
+    ]
+  },
+  "Pentagon": {
+    "lat": 38.8719,
+    "lon": -77.0563,
+    "aliases": [
+      "the Pentagon"
+    ]
+  },
+  "Pearl Harbor": {
+    "lat": 21.3649,
+    "lon": -157.95,
+    "aliases": [
+      "Pearl Harbor attack"
+    ]
+  },
+  "Warsaw": {
+    "lat": 52.2297,
+    "lon": 21.0122,
+    "aliases": [
+      "Warszawa"
+    ]
+  },
+  "Gdynia": {
+    "lat": 54.5189,
+    "lon": 18.5305,
+    "aliases": []
+  },
+  "Sopot": {
+    "lat": 54.4416,
+    "lon": 18.5601,
+    "aliases": []
+  },
+  "University of Warsaw": {
+    "lat": 52.2403,
+    "lon": 21.0189,
+    "aliases": [
+      "Warsaw University law faculty"
+    ]
+  },
+  "Innsbruck": {
+    "lat": 47.2692,
+    "lon": 11.4041,
+    "aliases": [
+      "Bergisel ski jump"
+    ]
+  },
+  "Linz": {
+    "lat": 48.3069,
+    "lon": 14.2858,
+    "aliases": []
+  },
+  "Geneva": {
+    "lat": 46.2044,
+    "lon": 6.1432,
+    "aliases": [
+      "Palais des Nations",
+      "UN building",
+      "Lake Geneva"
+    ]
+  },
+  "Mexico City": {
+    "lat": 19.4326,
+    "lon": -99.1332,
+    "aliases": []
+  },
+  "Stockholm": {
+    "lat": 59.3293,
+    "lon": 18.0686,
+    "aliases": []
+  },
+  "Glienicke Bridge": {
+    "lat": 52.4136,
+    "lon": 13.0909,
+    "aliases": [
+      "Bridge of Spies",
+      "Glienicker Brücke"
+    ]
+  },
+  "Kreuzlingen": {
+    "lat": 47.65,
+    "lon": 9.175,
+    "aliases": []
+  },
+  "New York City": {
+    "lat": 40.7128,
+    "lon": -74.006,
+    "aliases": [
+      "New York",
+      "NYC"
+    ]
+  },
+  "Kings Highway, Brooklyn": {
+    "lat": 40.6088,
+    "lon": -73.9576,
+    "aliases": [
+      "Sight and Sound",
+      "first Crazy Eddie store",
+      "Brooklyn"
+    ]
+  },
+  "Brooklyn": {
+    "lat": 40.6782,
+    "lon": -73.9442,
+    "aliases": [
+      "Brooklyn, NY"
+    ]
+  },
+  "Manhattan": {
+    "lat": 40.7831,
+    "lon": -73.9712,
+    "aliases": []
+  },
+  "Wall Street": {
+    "lat": 40.706,
+    "lon": -74.0088,
+    "aliases": [
+      "Wall Street",
+      "the Street"
+    ]
+  },
+  "Baruch College": {
+    "lat": 40.7402,
+    "lon": -73.9834,
+    "aliases": [
+      "Baruch College, CUNY"
+    ]
+  },
+  "WPIX radio, New York": {
+    "lat": 40.7502,
+    "lon": -73.973,
+    "aliases": [
+      "WPIX-FM",
+      "WPIX 101.9",
+      "Daily News Building"
+    ]
+  },
+  "Philadelphia": {
+    "lat": 39.9526,
+    "lon": -75.1652,
+    "aliases": []
+  },
+  "Boston": {
+    "lat": 42.3601,
+    "lon": -71.0589,
+    "aliases": [
+      "Massachusetts"
+    ]
+  },
+  "Newark federal courthouse": {
+    "lat": 40.7351,
+    "lon": -74.172,
+    "aliases": [
+      "Newark",
+      "U.S. District Court, District of New Jersey"
+    ]
+  },
+  "Third Circuit Court of Appeals": {
+    "lat": 39.951,
+    "lon": -75.1497,
+    "aliases": [
+      "James A. Byrne U.S. Courthouse",
+      "Philadelphia"
+    ]
+  },
+  "Tel Aviv": {
+    "lat": 32.0853,
+    "lon": 34.7818,
+    "aliases": [
+      "Bank Leumi, Tel Aviv"
+    ]
+  },
+  "Near Tel Aviv (arrest)": {
+    "lat": 31.878,
+    "lon": 34.739,
+    "aliases": [
+      "Yavne",
+      "Yavneh",
+      "Petah Tikva"
+    ]
+  },
+  "Panama City": {
+    "lat": 8.9824,
+    "lon": -79.5199,
+    "aliases": [
+      "Panama"
+    ]
+  },
+  "Lafayette Park": {
+    "lat": 38.8995,
+    "lon": -77.0366,
+    "aliases": [
+      "park across from the White House"
+    ]
+  },
+  "La Comandancia, El Chorrillo": {
+    "lat": 8.9497,
+    "lon": -79.542,
+    "aliases": [
+      "Comandancia",
+      "PDF headquarters",
+      "El Chorrillo",
+      "штаб панамской армии"
+    ]
+  },
+  "Cárcel Modelo": {
+    "lat": 8.951,
+    "lon": -79.541,
+    "aliases": [
+      "Modelo Prison",
+      "тюрьма Модело"
+    ]
+  },
+  "Panama Canal": {
+    "lat": 9.017,
+    "lon": -79.592,
+    "aliases": [
+      "canal",
+      "Miraflores Locks",
+      "Canal Zone",
+      "зона канала"
+    ]
+  },
+  "Fort Gulick (School of the Americas)": {
+    "lat": 9.333,
+    "lon": -79.87,
+    "aliases": [
+      "School of the Americas",
+      "Школа Америк"
+    ]
+  },
+  "Fort Bragg": {
+    "lat": 35.139,
+    "lon": -79.006,
+    "aliases": [
+      "Fort Bragg, North Carolina"
+    ]
+  },
+  "Chorrillos Military School": {
+    "lat": -12.169,
+    "lon": -77.025,
+    "aliases": [
+      "Escuela Militar de Chorrillos",
+      "Lima"
+    ]
+  },
+  "David, Chiriquí": {
+    "lat": 8.4273,
+    "lon": -82.4308,
+    "aliases": [
+      "Chiriquí",
+      "запад страны"
+    ]
+  },
+  "Tocumen International Airport": {
+    "lat": 9.0714,
+    "lon": -79.3835,
+    "aliases": [
+      "Tocumen",
+      "главный аэропорт Панамы"
+    ]
+  },
+  "Contadora Island": {
+    "lat": 8.626,
+    "lon": -79.038,
+    "aliases": [
+      "Contadora"
+    ]
+  },
+  "Darién Province": {
+    "lat": 8.4,
+    "lon": -77.9,
+    "aliases": [
+      "Darién",
+      "Дарьен"
+    ]
+  },
+  "Medellín": {
+    "lat": 6.2442,
+    "lon": -75.5812,
+    "aliases": [
+      "Medellín Cartel"
+    ]
+  },
+  "Bogotá": {
+    "lat": 4.711,
+    "lon": -74.0721,
+    "aliases": []
+  },
+  "Havana": {
+    "lat": 23.1136,
+    "lon": -82.3666,
+    "aliases": [
+      "Cuba"
+    ]
+  },
+  "Managua": {
+    "lat": 12.115,
+    "lon": -86.2362,
+    "aliases": [
+      "Nicaragua"
+    ]
+  },
+  "Panama–Costa Rica border (Paso Canoas)": {
+    "lat": 8.534,
+    "lon": -82.838,
+    "aliases": [
+      "граница с Коста-Рикой"
+    ]
+  },
+  "Miami federal courthouse": {
+    "lat": 25.7766,
+    "lon": -80.1937,
+    "aliases": [
+      "Miami",
+      "процесс в Майами"
+    ]
+  },
+  "Tampa": {
+    "lat": 27.9506,
+    "lon": -82.4572,
+    "aliases": []
+  },
+  "Berlin Wall": {
+    "lat": 52.5163,
+    "lon": 13.3777,
+    "aliases": [
+      "Brandenburg Gate"
+    ]
+  },
+  "Punta Paitilla Airport": {
+    "lat": 8.9739,
+    "lon": -79.5063,
+    "aliases": [
+      "Paitilla",
+      "аэропорт Пайтилья"
+    ]
+  },
+  "Fort Clayton": {
+    "lat": 9.005,
+    "lon": -79.581,
+    "aliases": [
+      "американская база"
+    ]
+  },
+  "Dairy Queen, Juan Díaz": {
+    "lat": 9.041,
+    "lon": -79.456,
+    "aliases": [
+      "Dairy Queen near the Hipódromo Presidente Remón"
+    ]
+  },
+  "Apostolic Nunciature, Panama City": {
+    "lat": 8.9788,
+    "lon": -79.515,
+    "aliases": [
+      "Vatican embassy",
+      "нунциатура",
+      "посольство Святого престола"
+    ]
+  },
+  "Howard Air Force Base": {
+    "lat": 8.9147,
+    "lon": -79.5996,
+    "aliases": [
+      "авиабаза Говард"
+    ]
+  },
+  "Paris": {
+    "lat": 48.8566,
+    "lon": 2.3522,
+    "aliases": [
+      "France"
+    ]
+  }
+}

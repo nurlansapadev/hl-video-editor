@@ -1,0 +1,455 @@
+{
+  "_about": "Countries for stock search: country -> search language + word stems that point to it (lowercase, matched at word start; 'word$' = whole word only). Grows per episode at step 0 (episode passport).",
+  "USA": {
+    "lang": "en",
+    "words": [
+      "united states",
+      "usa",
+      "america",
+      "new orleans",
+      "new york",
+      "new jersey",
+      "washington",
+      "california",
+      "florida",
+      "texas",
+      "louisiana",
+      "houston",
+      "miami",
+      "alabama"
+    ]
+  },
+  "Japan": {
+    "lang": "ja",
+    "words": [
+      "japan",
+      "tokyo",
+      "osaka",
+      "kyoto",
+      "saitama",
+      "hokkaido",
+      "okinawa",
+      "fukushima",
+      "narita"
+    ]
+  },
+  "Netherlands": {
+    "lang": "nl",
+    "words": [
+      "netherlands",
+      "holland",
+      "dutch",
+      "rotterdam",
+      "amsterdam",
+      "zeeland"
+    ]
+  },
+  "United Kingdom": {
+    "lang": "en",
+    "words": [
+      "united kingdom",
+      "britain",
+      "british",
+      "england",
+      "london",
+      "thames"
+    ]
+  },
+  "Italy": {
+    "lang": "it",
+    "words": [
+      "italy",
+      "italian",
+      "venice",
+      "rome",
+      "milan"
+    ]
+  },
+  "China": {
+    "lang": "zh",
+    "words": [
+      "china",
+      "chinese",
+      "beijing",
+      "shanghai",
+      "yangtze"
+    ]
+  },
+  "Spain": {
+    "lang": "es",
+    "words": [
+      "spain",
+      "spanish",
+      "madrid",
+      "barcelona",
+      "valencia"
+    ]
+  },
+  "Mexico": {
+    "lang": "es",
+    "words": [
+      "mexico",
+      "mexican"
+    ]
+  },
+  "Chile": {
+    "lang": "es",
+    "words": [
+      "chile",
+      "chilean",
+      "valparaiso"
+    ]
+  },
+  "Peru": {
+    "lang": "es",
+    "words": [
+      "peru",
+      "peruvian"
+    ]
+  },
+  "Argentina": {
+    "lang": "es",
+    "words": [
+      "argentin",
+      "buenos aires"
+    ]
+  },
+  "Colombia": {
+    "lang": "es",
+    "words": [
+      "colombia",
+      "colombian"
+    ]
+  },
+  "Indonesia": {
+    "lang": "id",
+    "words": [
+      "indonesia",
+      "jakarta",
+      "sumatra",
+      "bali"
+    ]
+  },
+  "Philippines": {
+    "lang": "en",
+    "words": [
+      "philippin",
+      "filipin",
+      "manila"
+    ]
+  },
+  "Thailand": {
+    "lang": "th",
+    "words": [
+      "thailand",
+      "thai$",
+      "bangkok"
+    ]
+  },
+  "Vietnam": {
+    "lang": "vi",
+    "words": [
+      "vietnam",
+      "hanoi",
+      "saigon"
+    ]
+  },
+  "India": {
+    "lang": "en",
+    "words": [
+      "india$",
+      "indian$",
+      "mumbai",
+      "delhi",
+      "kolkata",
+      "punjab",
+      "amritsar",
+      "haryana"
+    ]
+  },
+  "Bangladesh": {
+    "lang": "en",
+    "words": [
+      "bangladesh",
+      "dhaka"
+    ]
+  },
+  "Pakistan": {
+    "lang": "en",
+    "words": [
+      "pakistan",
+      "karachi"
+    ]
+  },
+  "Nepal": {
+    "lang": "en",
+    "words": [
+      "nepal",
+      "kathmandu"
+    ]
+  },
+  "South Korea": {
+    "lang": "ko",
+    "words": [
+      "korea",
+      "seoul"
+    ]
+  },
+  "Taiwan": {
+    "lang": "zh",
+    "words": [
+      "taiwan",
+      "taipei"
+    ]
+  },
+  "Russia": {
+    "lang": "ru",
+    "words": [
+      "russia",
+      "russian",
+      "moscow",
+      "soviet"
+    ]
+  },
+  "Germany": {
+    "lang": "de",
+    "words": [
+      "germany",
+      "german",
+      "hamburg",
+      "berlin"
+    ]
+  },
+  "France": {
+    "lang": "fr",
+    "words": [
+      "france",
+      "french",
+      "paris"
+    ]
+  },
+  "Turkey": {
+    "lang": "tr",
+    "words": [
+      "turkey",
+      "turkish",
+      "istanbul"
+    ]
+  },
+  "Greece": {
+    "lang": "el",
+    "words": [
+      "greece",
+      "greek",
+      "athens"
+    ]
+  },
+  "Iceland": {
+    "lang": "en",
+    "words": [
+      "iceland"
+    ]
+  },
+  "Norway": {
+    "lang": "no",
+    "words": [
+      "norway",
+      "norwegian"
+    ]
+  },
+  "Canada": {
+    "lang": "en",
+    "words": [
+      "canada",
+      "canadian",
+      "vancouver",
+      "toronto",
+      "montreal"
+    ]
+  },
+  "Australia": {
+    "lang": "en",
+    "words": [
+      "australia",
+      "sydney"
+    ]
+  },
+  "New Zealand": {
+    "lang": "en",
+    "words": [
+      "new zealand"
+    ]
+  },
+  "Haiti": {
+    "lang": "fr",
+    "words": [
+      "haiti"
+    ]
+  },
+  "Egypt": {
+    "lang": "en",
+    "words": [
+      "egypt",
+      "aswan",
+      "cairo"
+    ]
+  },
+  "Brazil": {
+    "lang": "pt",
+    "words": [
+      "brazil",
+      "brasil"
+    ]
+  },
+  "Venezuela": {
+    "lang": "es",
+    "words": [
+      "venezuela"
+    ]
+  },
+  "Ecuador": {
+    "lang": "es",
+    "words": [
+      "ecuador"
+    ]
+  },
+  "Panama": {
+    "lang": "es",
+    "words": [
+      "panama"
+    ]
+  },
+  "Singapore": {
+    "lang": "en",
+    "words": [
+      "singapore"
+    ]
+  },
+  "Portugal": {
+    "lang": "pt",
+    "words": [
+      "portugal",
+      "lisbon"
+    ]
+  },
+  "Greenland": {
+    "lang": "en",
+    "words": [
+      "greenland",
+      "thule",
+      "pituffik",
+      "camp century",
+      "greenland ice sheet",
+      "icecap",
+      "north star bay"
+    ]
+  },
+  "Denmark": {
+    "lang": "da",
+    "words": [
+      "denmark",
+      "danish",
+      "copenhagen"
+    ]
+  },
+  "Soviet Union": {
+    "lang": "ru",
+    "words": [
+      "soviet union",
+      "ussr",
+      "moscow"
+    ]
+  },
+  "South Africa": {
+    "lang": "en",
+    "words": [
+      "south africa",
+      "pretoria",
+      "johannesburg",
+      "cape town",
+      "transvaal",
+      "apartheid"
+    ]
+  },
+  "Switzerland": {
+    "lang": "de",
+    "words": [
+      "switzerland",
+      "swiss",
+      "zurich"
+    ]
+  },
+  "Angola": {
+    "lang": "pt",
+    "words": [
+      "angola",
+      "angolan"
+    ]
+  },
+  "Mozambique": {
+    "lang": "pt",
+    "words": [
+      "mozambique"
+    ]
+  },
+  "Poland": {
+    "lang": "pl",
+    "words": [
+      "poland",
+      "polish",
+      "warsaw",
+      "gdynia",
+      "sopot",
+      "pewex",
+      "polamco"
+    ]
+  },
+  "Austria": {
+    "lang": "de",
+    "words": [
+      "austria",
+      "innsbruck",
+      "linz"
+    ]
+  },
+  "Sweden": {
+    "lang": "sv",
+    "words": [
+      "sweden",
+      "stockholm"
+    ]
+  },
+  "Israel": {
+    "lang": "en",
+    "words": [
+      "israel",
+      "tel aviv",
+      "bank leumi",
+      "yavne",
+      "petah tikva"
+    ]
+  },
+  "Cuba": {
+    "lang": "es",
+    "words": [
+      "cuba",
+      "havana"
+    ]
+  },
+  "Nicaragua": {
+    "lang": "es",
+    "words": [
+      "nicaragua",
+      "managua",
+      "sandinista",
+      "contras"
+    ]
+  },
+  "Costa Rica": {
+    "lang": "es",
+    "words": [
+      "costa rica",
+      "border"
+    ]
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "version": 1, "language": "en", "fps": 30, "width": 1920, "height": 1080, "duration": 24,
+  "scenes": [
+    {"id": "s1", "kind": "title", "start": 0, "end": 5, "data": {"kicker": "Engine demo", "title": "The FBI's Version", "subtitle": "Titles, counters, lists, quotes"}},
+    {"id": "s2", "kind": "counter", "start": 5, "end": 11, "transition": {"type": "zoom"}, "data": {"value": 150000, "suffix": "copies", "label": "Soldier of Fortune at its peak"}},
+    {"id": "s3", "kind": "list", "start": 11, "end": 18, "transition": {"type": "push"}, "data": {"title": "One product, sold twice", "items": [{"text": "First — to the students", "detail": "$350 for a two-week course"}, {"text": "Then — to the government"}]}},
+    {"id": "s4", "kind": "quote", "start": 18, "end": 24, "transition": {"type": "dip"}, "data": {"text": "Everything we do here is legal.", "author": "Frank Camper, 1985"}}
+  ]
+}
