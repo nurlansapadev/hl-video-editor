@@ -44,6 +44,7 @@ VideoEditor_2.0\                      код и настройки (данных
                                       контракт — sources\__init__.py; порядок и выключение — settings.json → finder;
                                       ddg.py (DuckDuckGo), tavily.py (запасной) — только образцы для ReGen,
                                       в ролик напрямую не идут; счётчик Tavily — data\tavily_usage.json
+  tools\gap_fill.py                   `ve.py fill`: пустые шоты с образцом → ReGen → [СЦЕНА: N-1-rg] в script.txt
   tools\find_history.py               журнал поиска по эпизодам (data\find_history.jsonl, find_requests.jsonl)
                                       и `ve.py findstats` — вклад источников, пустые шоты, подсказки
   tools\planner.py                    режиссёрский план (plan.json)

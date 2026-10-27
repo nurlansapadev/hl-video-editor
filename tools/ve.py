@@ -10,6 +10,7 @@
   index    — каталог своих кадров: 05_footage, 03_generated, 02_characters (описания для поиска)
   prompts  — задание на генерацию [КАРТИНКА] → 06_montage/output/ep-N_generate.txt (картинки — в 03_generated)
   find     — поиск кадров: сначала свои папки, потом интернет (отчёт — 06_montage/work/find_report.txt)
+  fill     — сразу после find: пустые шоты с образцом (refs/) → ReGen → [СЦЕНА: N-1-rg] в script.txt (gap_fill.py)
   findstats — журнал поиска по всем эпизодам (data/find_history.jsonl): вклад источников, пустые шоты, подсказки;
              эпизод не нужен: ve.py findstats
 Переход:
@@ -762,7 +763,7 @@ def main() -> None:
     ap = argparse.ArgumentParser(description="VideoEditor 2.0", formatter_class=argparse.RawDescriptionHelpFormatter, epilog=__doc__)
     ap.add_argument("command", choices=["prepare", "passport", "index", "prompts", "find", "inputs", "analyze", "empty", "plan",
                                         "render", "check", "studio", "regen", "gen", "regravure", "refs", "shotrefs",
-                                        "findstats"])
+                                        "findstats", "fill"])
     ap.add_argument("episode", nargs="?", help="папка эпизода в production/honest-lies, например ep-7 (findstats — не нужен)")
     ap.add_argument("--force", action="store_true", help="пересобрать заново (поиск / расшифровку / ручной план / regen: перезаписать)")
     ap.add_argument("--preview", action="store_true", help="render: черновик в половинном разрешении")
@@ -787,6 +788,7 @@ def main() -> None:
      "index": lambda: cmd_index(ep),
      "prompts": lambda: cmd_prompts(ep, project),
      "find": lambda: cmd_find(ep, project, a.force),
+     "fill": lambda: __import__("gap_fill").run(ep),  # пустые шоты с образцом → ReGen → сценарий
      "inputs": lambda: cmd_inputs(ep, project),
      "analyze": lambda: cmd_analyze(ep, project, a.force),
      "empty": lambda: cmd_empty(ep, project),
