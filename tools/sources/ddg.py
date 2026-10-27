@@ -37,7 +37,8 @@ def search(q: str, kind: str, n: int, lang: str = "en") -> list[dict]:
     if _refusals >= MAX_REFUSALS:
         raise SourceBlocked("duckduckgo.com")
     from ddgs import DDGS
-    from ddgs.exceptions import RatelimitException
+    from ddgs.exceptions import DDGSException, RatelimitException
+    glitches = 0  # разовые сбои библиотеки («malformed headers», 2026-10-27) — при повторе проходят
     for attempt in range(MAX_REFUSALS):
         wait = PAUSE - (time.time() - _last)
         if wait > 0:
@@ -53,6 +54,12 @@ def search(q: str, kind: str, n: int, lang: str = "en") -> list[dict]:
             if _refusals >= MAX_REFUSALS:
                 raise SourceBlocked("duckduckgo.com") from None
             time.sleep(10 * (attempt + 1))
+        except DDGSException:
+            _last = time.time()
+            glitches += 1
+            if glitches >= 2:
+                raise
+            time.sleep(3)
     else:
         return []
     out = []
