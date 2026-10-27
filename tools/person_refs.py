@@ -4,7 +4,9 @@
 свой кадр <id>_NN или референс refs/s_<id>_N) собирает кандидатов:
   1) главное фото статьи Википедии (en, затем af) по имени;
   2) файлы Commons, названные в archive.where реестра (Senator_dick_clark.jpg, PW_Botha_1962.jpg …);
-  3) поиск Commons по «имя + год события».
+  3) поиск Commons по «имя + год события»;
+  4) годного среди них нет — поиск по интернету (с EP-13): DuckDuckGo (заголовки страниц) + Tavily (1 кредит).
+     Подписи Tavily сочинены по запросу — проверке даём сайт и имя файла из ссылки, а не их (урок 2026-10-27).
 Права у референса не важны: он идёт только в ReGravure (s_ — в монтаж не попадает).
 gpt-4.1-mini смотрит каждого кандидата: одно ясное лицо, примерный год снимка и возраст против года события,
 водяные знаки / логотипы. Кто на фото — по подписи источника (заголовок статьи / описание файла Commons),
@@ -37,7 +39,8 @@ CHECK = """This image is a candidate REFERENCE PORTRAIT of {name} ({role}) for a
 The story moment is around {year}; the person was born {born}.
 Source caption: "{caption}"
 Judge only what is visible — do not try to recognize the face. Return JSON:
-{{"one_clear_face": true/false, "people_count": n, "photo_era": "e.g. 1970s / 2010s", "apparent_age": n,
+{{"one_clear_face": true/false, "people_count": n,
+"is_document_or_page": true/false (newspaper page, document, collage, poster, book cover, painting — not a photo of the person), "photo_era": "e.g. 1970s / 2010s", "apparent_age": n,
 "age_fits": true/false (apparent age plausible for the story year), "watermark_or_logo": true/false,
 "caption_matches": true/false (caption names this person), "score": 0-10 (usefulness as a reference portrait of this person
 at that time: clear single face, right era/age, caption names him/her), "note": "1 short sentence"}}"""
@@ -105,12 +108,139 @@ def _commons_search(text: str, n: int = 3) -> list[str]:
         return []
 
 
+WEB_DDG = 6  # сколько лучших картинок DuckDuckGo смотреть на человека
+BROWSER_UA = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) "
+                            "Chrome/140.0 Safari/537.36"}
+
+
+def _role_words(role: str) -> str:
+    """«former Noriega adviser and Panama's consul general…; Senate witness» → первые слова роли до запятой / «;»."""
+    return " ".join(re.split(r"[,;(]", role or "")[0].split()[:6])
+
+
+def _file_words(url: str) -> str:
+    """Имя файла из ссылки — часто честнее подписи: …/jose-blandon-castillo.jpg → «jose blandon castillo»."""
+    stem = Path(urllib.parse.unquote(urllib.parse.urlparse(url).path)).stem
+    return re.sub(r"[-_+.]+", " ", stem)[:80]
+
+
+def _web_candidates(name: str, person: dict) -> list[tuple[str, str]]:
+    """Портреты из интернета: DuckDuckGo + Tavily → [(url, подпись для проверки)]."""
+    import sources
+    q = f"{name} {_role_words(person.get('role', ''))}".strip()
+    out: list[tuple[str, str]] = []
+    for src, n in (("ddg", WEB_DDG), ("tavily", 5)):
+        try:
+            got = sources.get(src).search(q, "image", n)[:n]
+        except Exception as e:  # noqa: BLE001
+            log(f"    {src}: {str(e)[:80]}")
+            continue
+        for c in got:
+            site = urllib.parse.urlparse(c["url"]).netloc
+            if src == "ddg":
+                cap = f"web page «{c.get('title', '')[:140]}» (site {c.get('author') or site}); file name: {_file_words(c['url'])}"
+            else:  # подпись Tavily повторяет запрос — не подпись источника
+                cap = (f"web search result for «{q}» (site {site}); file name: {_file_words(c['url'])}. "
+                       f"No real caption: the search engine only guessed")
+            out.append((c["url"], f"[{src}] {cap}", c.get("thumb")))
+    return out
+
+
+def _download(url: str, web: bool) -> bytes:
+    """Wikimedia — со своим UA и паузой 2 с (правила); интернет — как браузер, без пауз, до 15 МБ."""
+    if not web:
+        data = _get(url.split("?")[0], raw=True)
+        time.sleep(2.0)  # не чаще одного файла в 2 с — правила Wikimedia
+        return data
+    import ssl
+    import certifi  # корневые сертификаты свежее, чем у Windows-Python (army.mil не открывался, 2026-10-27)
+    ctx = ssl.create_default_context(cafile=certifi.where())
+    with urllib.request.urlopen(urllib.request.Request(url, headers=BROWSER_UA), timeout=30, context=ctx) as r:
+        data = r.read(15 * 1024 * 1024 + 1)
+    if len(data) > 15 * 1024 * 1024:
+        raise RuntimeError("файл больше 15 МБ")
+    return data
+
+
+def _as_jpeg(data: bytes) -> bytes:
+    """Сайты отдают WebP / AVIF под видом .jpg — проверка такое не принимает (HTTP 400): всё в JPEG.
+    Не картинка (страница входа Facebook и т. п.) — исключение."""
+    import io
+    from PIL import Image
+    try:
+        im = Image.open(io.BytesIO(data)).convert("RGB")
+    except Exception as e:  # noqa: BLE001
+        raise RuntimeError("не картинка") from e
+    im.thumbnail((2000, 2000))
+    buf = io.BytesIO()
+    im.save(buf, "JPEG", quality=92)
+    return buf.getvalue()
+
+
+def _check_all(found: list[tuple], seen: set, cands: list[dict], p: dict, year: str, key: str) -> float:
+    """Скачать и проверить кандидатов (gpt-4.1-mini) → в cands. → потрачено $."""
+    spent, pid, name = 0.0, p.get("id"), p.get("name", "")
+    for item in found:
+        url, cap = item[0], item[1]
+        if url in seen:
+            continue
+        seen.add(url)
+        web = cap.startswith("[ddg]") or cap.startswith("[tavily]")
+        img = None
+        # не отдал файл (403, платный доступ) или отдал страницу вместо картинки (Facebook) — берём превью
+        for u in [url] + ([item[2]] if len(item) > 2 and item[2] else []):
+            try:
+                img = _download(u, web)
+                if web:
+                    img = _as_jpeg(img)
+                break
+            except Exception as e:  # noqa: BLE001
+                img = None
+                log(f"  {pid}: не взялось {u[-60:]} ({str(e)[:60]})")
+        if not img:
+            continue
+        if web:
+            ext = ".jpg"
+        else:
+            ext = Path(urllib.parse.urlparse(url).path).suffix.lower()
+            ext = ext if ext in (".jpg", ".jpeg", ".png", ".webp") else ".jpg"
+        mime = "image/png" if ext == ".png" else "image/webp" if ext == ".webp" else "image/jpeg"
+        try:
+            v, u = _ask(img, mime, CHECK.format(name=name, role=p.get("role", ""), year=year or "?",
+                                                born=p.get("years", "?"), caption=cap), key)
+            spent += _cost(ANALYST, u)
+        except Exception as e:  # noqa: BLE001
+            log(f"  {pid}: проверка не прошла ({e})")
+            continue
+        score = float(v.get("score", 0) or 0)
+        if v.get("caption_matches") is False and cap.startswith("[tavily]") and v.get("one_clear_face"):
+            score = min(score, 6)  # у Tavily подписи нет — решают сайт, имя файла и лист глазами
+        elif v.get("watermark_or_logo") and web:
+            score = min(score, 7)  # водяной знак на образце не страшен: гравюру рисуют заново
+        elif v.get("watermark_or_logo") or not v.get("one_clear_face") or v.get("caption_matches") is False:
+            score = min(score, 4)
+        if v.get("is_document_or_page"):
+            score = min(score, 4)  # газетная полоса с крошечным лицом — не портрет (тест 2026-10-27: Blandón)
+        if int(v.get("people_count") or 1) > 1:
+            score = min(score, 5)  # групповое фото — только если одиночного нет (EP-09: Ginsburg с Carter)
+        if v.get("age_fits") is False:
+            score = min(score, 5)
+        cands.append({"url": url, "caption": cap, "score": score, "check": v, "ext": ext, "bytes": img})
+        time.sleep(1.0 if not web else 0.2)
+    return spent
+
+
 def _year(person: dict, cast: dict) -> str:
     """Год события: по era эпизода (первое число) и возрасту человека, если известен."""
     born = re.search(r"\d{4}", person.get("years", "") or "")
     age = re.search(r"\d+", str(person.get("age_at_event") or ""))  # бывает строкой: «21 (1969) · 36 (IPO 1984)»
     if born and age:
         return str(int(born.group()) + int(age.group()))
+    # без года рождения — год из роли / одежды («trial witness… 1991–92», «suit, 1991–1992»), а не начало эпохи
+    # эпизода (ep-12: Bilonick получил 1967 и «не тот возраст» у всех кандидатов)
+    m = re.search(r"\b(?:19|20)\d{2}\b", f"{person.get('role', '')} {person.get('wardrobe', '')}")
+    if m:
+        return m.group()
     m = re.search(r"\d{4}", cast.get("era", "") or "")
     return m.group() if m else ""
 
@@ -123,7 +253,7 @@ def run(ep: Path, ids_filter: set[str] | None = None, dry: bool = False) -> None
     key = _key()
     journal = load_json(work / "person_refs.json", {}) or {}
     spent, sheet = 0.0, []
-    log(f"▶ Референсы людей {ep.name}: Википедия + Commons по cast.json{' — без записи (--dry)' if dry else ''}")
+    log(f"▶ Референсы людей {ep.name}: Википедия + Commons по cast.json, нет — DuckDuckGo + Tavily{' — без записи (--dry)' if dry else ''}")
     for p in cast.get("people", []) or []:
         pid, name = p.get("id"), p.get("name", "")
         if not pid or (ids_filter and pid not in ids_filter):
@@ -165,34 +295,11 @@ def run(ep: Path, ids_filter: set[str] | None = None, dry: bool = False) -> None
                 found.append(r)
             time.sleep(0.5)
         seen, cands = set(), []
-        for url, cap in found:
-            if url in seen:
-                continue
-            seen.add(url)
-            try:
-                img = _get(url.split("?")[0], raw=True)
-                time.sleep(2.0)  # не чаще одного файла в 2 с — правила Wikimedia
-            except Exception as e:  # noqa: BLE001
-                log(f"  {pid}: не скачалось {url[-60:]} ({e})")
-                continue
-            ext = Path(urllib.parse.urlparse(url).path).suffix.lower() or ".jpg"
-            mime = "image/png" if ext == ".png" else "image/webp" if ext == ".webp" else "image/jpeg"
-            try:
-                v, u = _ask(img, mime, CHECK.format(name=name, role=p.get("role", ""), year=year or "?",
-                                                    born=p.get("years", "?"), caption=cap), key)
-                spent += _cost(ANALYST, u)
-            except Exception as e:  # noqa: BLE001
-                log(f"  {pid}: проверка не прошла ({e})")
-                continue
-            score = float(v.get("score", 0) or 0)
-            if v.get("watermark_or_logo") or not v.get("one_clear_face") or v.get("caption_matches") is False:
-                score = min(score, 4)
-            elif int(v.get("people_count") or 1) > 1:
-                score = min(score, 5)  # групповое фото — только если одиночного нет (EP-09: Ginsburg с Carter)
-            if v.get("age_fits") is False:
-                score = min(score, 5)
-            cands.append({"url": url, "caption": cap, "score": score, "check": v, "ext": ext, "bytes": img})
-            time.sleep(1.0)
+        spent += _check_all(found, seen, cands, p, year, key)
+        if not cands or max(c["score"] for c in cands) < PASS:  # Википедия и Commons не дали — ищем в интернете
+            web = _web_candidates(names[0], p)
+            log(f"  {pid}: в Википедии и Commons годного нет — интернет: {len(web)} кандидатов (DuckDuckGo + Tavily)")
+            spent += _check_all(web, seen, cands, p, year, key)
         cands.sort(key=lambda c: -c["score"])
         best = cands[0] if cands and cands[0]["score"] >= PASS else None
         log(f"  {pid}: кандидатов {len(cands)}" + (f", лучший {best['score']:g}/10 — {best['caption'][:90]} · {best['check'].get('note', '')[:80]}"
