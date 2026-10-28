@@ -14,20 +14,23 @@ Free text in square brackets, placed right before the words they colour. A tag h
 
 **Describe how the line sounds, not what the speaker does.** `[grinning]`, `[pacing]`, `[leaning in]`, `[standing]` are not performed. `[low, gravelly voice]` beats `[gravelly]` — a one-word tag can be misread as a sound effect.
 
-Combine qualities with commas inside one bracket: `[low, dry, unhurried]`. Short phrases are fine: `[quietly, with controlled contempt]`. Keep them under ~6 words. Plain words, no hyphens.
+Combine qualities with commas inside one bracket: `[full, confident, measured]`. Short phrases are fine: `[dry, with controlled contempt]`. Keep them under ~6 words. Plain words, no hyphens.
 
 Match tags to the voice. A serious voice doesn't do `[giggles]` well. Check the channel's range in `channels.md`.
 
 One tag per clause. Contrasting tags on the same words blur the performance.
 
-Useful for a dry documentary narrator (starting set, write your own):
-- Baseline: `[low, dry, unhurried]`, `[measured]`, `[flat, deadpan]`, `[matter-of-fact]`
-- Building tension: `[lower, confidential]`, `[quiet, measured]`, `[slower, deliberate]`, `[tense, restrained]`
-- Irony: `[dry, quietly amused]`, `[deadpan, a hint of contempt]`, `[wry]`, `[dry, a hint of a smile]`
-- Weight / reveal: `[firm, hard]`, `[grim]`, `[low, final]`, `[heavy]`
-- Reflection: `[thoughtful]`, `[weary]`, `[quietly]`
-- Pacing: `[slowly]`, `[rushed]` (rarely for this narrator)
-- Non-verbal, sparingly and only if they fit the character: `[sighs]`, `[exhales]`, `[short laugh]`, `[clears throat]`
+Useful for Arny — a strong, energetic narrator with a full, confident voice (starting set, write your own;
+the four registers are from hl-script `production/voice-and-sound.md`):
+- Steady reporter (beats 1–2): `[full, confident, measured]`, `[matter-of-fact]`, `[clear, steady]`
+- Impressed pro (beat 4): `[with relish]`, `[impressed, energetic]`, `[eager, building]`
+- Deadpan skeptic (beats 5–6): `[dry, deadpan]`, `[dry, a hint of contempt]`, `[wry]`, `[sarcastic, confident]`
+- Mask off (beat 7): `[firm, direct]`, `[plain, no nonsense]`
+- Weight / reveal: `[firm, hard]`, `[slower, deliberate]`, `[grim, steady]` — a calm, steady line against a heavy meaning
+- Outro: `[dry, a hint of a smile]`
+- Non-verbal, sparingly and only if they fit the character: `[short laugh]`, `[clears throat]`
+- **Never for Arny:** whisper, breathy, `[quiet]`, `[quietly]`, `[confidential]`, `[weary]`, `[sighs]`, sleepy or lulling tags,
+  and no shouting / trailer-voice tags. A take that comes out sluggish, sleepy, whispering or announcer-flat is regenerated.
 
 Avoid sound-effect tags (`[applause]`, `[explosion]`, `[footsteps]`) in narration — music and SFX are done in the edit.
 
@@ -52,7 +55,7 @@ Only when a name or term is likely to be misread and he asks, or it's critical. 
 - Chunk = one generation call = one file. Max 3 000 characters including tags. Cut at beat boundaries; never mid-paragraph.
 - The model performs better with context, so don't make chunks tiny either: aim for 1 500–3 000 characters, except the outro.
 
-## Example (Honest Lies hook, approved by the user)
+## Example (Honest Lies hook; text approved by the user, tags updated 2026-10-28 to the hl-script voice rules)
 ```
-[low, dry, unhurried] Greenland. A tunnel carved deep into ice that's been here for thousands of years. Camera flashes catch two Boy Scouts in the half-dark — one American, one Danish. They're grinning for the photographers at the mouth of a tunnel that leads to a nuclear reactor. [flat, deadpan] This is no top-secret bunker. It's a SHOWROOM. The U.S. Army wants the whole world to see its city under the ice. [lower, confidential] Two things, though, stay out of the picture. First: the Americans started digging into this ice before Denmark — which owns the island — ever said yes. Second: this camp wasn't REALLY built for science. [quiet, measured] So what was the Pentagon actually burying under the Greenland snow? And why didn't America's ally ever ask what it was for? [dry, a hint of a smile] You're about to see how you hide a massive nuclear plan inside the most famous camp in the Arctic — and hide it so LOUDLY that your ally would rather not look.
+[full, confident, measured] Greenland. A tunnel carved deep into ice that's been here for thousands of years. Camera flashes catch two Boy Scouts in the half-dark — one American, one Danish. They're grinning for the photographers at the mouth of a tunnel that leads to a nuclear reactor. [dry, deadpan] This is no top-secret bunker. It's a SHOWROOM. The U.S. Army wants the whole world to see its city under the ice. [slower, deliberate] Two things, though, stay out of the picture. First: the Americans started digging into this ice before Denmark — which owns the island — ever said yes. Second: this camp wasn't REALLY built for science. [firm, direct] So what was the Pentagon actually burying under the Greenland snow? And why didn't America's ally ever ask what it was for? [dry, a hint of a smile] You're about to see how you hide a massive nuclear plan inside the most famous camp in the Arctic — and hide it so LOUDLY that your ally would rather not look.
 ```

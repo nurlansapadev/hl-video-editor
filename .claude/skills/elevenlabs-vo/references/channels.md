@@ -6,10 +6,12 @@
 - Model: `eleven_v4` — confirmed by Nurlan (EP-10, 2026-10-22): always v4, no probe, even if `sound-vo.md` names v3
 - Language: English
 - Default folder: `D:\YouTube-Studio\production\honest-lies\ep-N\01_vo\` (N without leading zero: `ep-8`)
-- Who he is: 60-year-old working-class New Yorker, ex-docks, retired-investigator energy. Deep, gravelly, slightly raspy; subtle NY accent. Dry, deadpan, unhurried. Has seen everything, stopped being surprised long ago. No theatrics, no surface warmth.
-- Content: Cold War / espionage documentaries for a US/UK audience. Noir tone.
-- Delivery range to stay inside: low, dry, measured, flat, deadpan, confidential, quietly ironic, grim, weary. Rare peaks: a firmer, harder line at a reveal.
-- Outside his range: excited, cheerful, playful, giggles, shouting, whispering for effect, sing-song, any "YouTuber" energy.
-- First-person asides ("Thirty-five years on the docks, I…") are Arny talking about himself — a touch more personal and wry than the narration around them.
-- Outro / end-teaser: same voice, slightly lighter — dry, a hint of a smile, still unhurried.
+- Source of truth: hl-script `production/voice-and-sound.md` (voice law) and `channel/staff/arny.md` (character). If this block disagrees with them, they win.
+- Who he is: a strong, energetic retired New Yorker, about 60. Low, rich voice, subtle NY accent, crisp diction. Talks to the viewer as an equal: not an announcer, not a trailer — a man telling a story he can't wait to tell. Sharp, dry, sarcastic but never bitter; respects competence, mocks sloppiness.
+- Content: true stories of deception — espionage, Cold War operations, big frauds — for a US audience 50–75.
+- Delivery: full, confident voice. Energy comes from drive and interest, not volume: relish the key words (names, numbers, euphemisms), keep a confident flow, pause before what matters — a pause is pressure, not rest. Strongest moments come from contrast: a calm, steady line against heavy meaning. The intrigue is in the text; the voice delivers it with zest, no overacting.
+- Four registers, shades of one voice (Voicer marks them per block in `sound-vo.md`): steady reporter (beats 1–2) → impressed pro (beat 4) → deadpan skeptic (beats 5–6) → mask off (beat 7).
+- Never: whisper, breathy, sleepy, lulling, weary, confidential murmur, low-energy noir; flat announcer read; shouting, trailer voice, giggles, sing-song, salesy "YouTuber" hype. A take that sounds sluggish, sleepy, whispering or announcer-flat gets regenerated.
+- No dockside / port past in the text: Arny never refers to his former job and uses no port or logistics metaphors — don't add them in tags or notes either.
+- Outro / end-teaser: same voice, a touch lighter — dry, a hint of a smile, still confident.
 - Subtitles: not used on this channel.
