@@ -14,6 +14,8 @@
   REFS_ONLY      = False              — только образцы для ReGen (права неизвестны): спрашивается, лишь когда
                                         свободных кадров на шот не хватило (DuckDuckGo)
   REGIONS        = None | "europe"    — спрашивать только для запросов про эти страны (Europeana — Европа)
+  wants(q, kind) -> bool      — по желанию: стоит ли спрашивать источник по этому запросу («по теме»: NASA — только
+                                космос, LoC — только документы, Commons — видео только по конкретному запросу)
   search(q, kind, n, lang="en") -> list[dict]   — обязательно; кандидаты в общем формате:
       {source, type, url, thumb (превью для проверки глазами), page, title, author, license, license_url,
        width, height, [duration, date, text]}
@@ -28,6 +30,7 @@ from __future__ import annotations
 
 import importlib
 import pkgutil
+import re
 from types import ModuleType
 
 KINDS = ("image", "video", "news", "amateur", "document", "film")
@@ -95,6 +98,20 @@ def fits_region(name: str, region: str) -> bool:
     if want == "europe":
         return region in EUROPE
     return True
+
+
+def is_specific(q: str) -> bool:
+    """«Ronald Reagan 1985», «Sirloin Stockade sign» — конкретный запрос (имя, название, год); «family eating pie» — общий план."""
+    return bool(re.search(r"\b[A-ZА-ЯЁ][\w-]+", q) or re.search(r"\b(1[89]|20)\d\d\b", q))
+
+
+def fits(name: str, query: str, kind: str, region: str) -> bool:
+    """Спрашивать ли источник по этому запросу: страна (REGIONS) и тема (wants). Без правил — всегда."""
+    mod = all_sources()[name]
+    if not fits_region(name, region):
+        return False
+    wants = getattr(mod, "wants", None)
+    return wants(query, kind) if wants else True
 
 
 def order(cfg: dict) -> tuple[dict[str, list[str]], list[str]]:

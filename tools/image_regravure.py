@@ -23,7 +23,8 @@ import urllib.error
 from datetime import datetime
 from pathlib import Path
 
-from image_regenerator import ANALYST, FORMAT, MAX_RETRIES, PAINTER, PASS_SCORE, QUALITY, REF_EXT, SIZE, _ask, _cost, _key, _paint
+from image_regenerator import (ANALYST, FORMAT, MAX_RETRIES, PAINTER, PASS_SCORE, QUALITY, REF_EXT, SIZE, _ask, _cost, _key,
+                               _paint, _ref_bytes)
 from util import CHARACTERS_DIR, EDIT_DIR, load_json, log, save_json
 
 # промт Nurlan (2026-10-20) — слово в слово; {pron} — his / her по референсу
@@ -103,7 +104,8 @@ def run(ep: Path, ids_filter: set[str] | None = None, force: bool = False, dry: 
         t0 = time.time()
         c_an = c_img = 0.0
         try:
-            info, u1 = _ask(ref.read_bytes(), _mime(ref), REF_PROMPT, key)
+            data, mime, _ = _ref_bytes(ref)  # большой референс (EP-14: 7474×9269) — уменьшенный, иначе HTTP 400
+            info, u1 = _ask(data, mime, REF_PROMPT, key)
             n_analyst += 1
             c_an += _cost(ANALYST, u1)
             pron = "her" if str(info.get("gender", "")).lower().startswith("f") else "his"

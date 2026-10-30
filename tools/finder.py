@@ -17,16 +17,19 @@ import base64
 import io
 import json
 import re
+import threading
 import time
 import urllib.error
 import urllib.parse
 import urllib.request
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import sources
 from scriptparse import WORDS_PER_MIN, find_slug
 from sources import local as src_local
-from sources._http import DL_DELAY, UA, SourceBlocked, _dl_cool, _dl_last, download, http_json, keys, strip_html
+from sources._http import (DL_DELAY, UA, SourceBlocked, _dl_cool, _dl_last, download, http_json, keys, pace,
+                           strip_html)
 from sources._license import LICENSE_TEXT, NOT_FREE, norm_license
 from util import load_json, log, run, save_json
 
@@ -126,14 +129,33 @@ def shot_numbers(script_path: Path) -> dict[str, int]:
 
 
 _LOG: Path | None = None
+_log_lock = threading.Lock()
 _blocked_told: set[str] = set()
+# оценки глаз по кандидату и запросу — повторный find и соседние шоты не смотрят тот же кадр заново
+_VCACHE: dict[str, dict] = {}
+_vcache_path: list[Path | None] = [None]
+_vcache_lock = threading.Lock()
+_vision_calls = [0]  # сколько раз смотрели глазами за запуск (деньги OpenAI) — в журнал поиска
+
+
+def _vision_cache_load(work: Path) -> None:
+    _vcache_path[0] = work / "vision_cache.json"
+    _VCACHE.clear()
+    _VCACHE.update(load_json(_vcache_path[0], {}) or {})
+    _vision_calls[0] = 0
+
+
+def _vision_cache_save() -> None:
+    if _vcache_path[0]:
+        with _vcache_lock:
+            save_json(_vcache_path[0], _VCACHE)
 VISION_VERSION = 5  # 5 — проверка по паспорту эпизода (эпоха, люди); находки старых версий перепроверяются
 
 
 def flog(msg: str) -> None:
     """Подробный журнал поиска: 06_montage/work/find_log.txt (для разбора, почему что-то не нашлось)."""
     if _LOG:
-        with open(_LOG, "a", encoding="utf-8") as f:
+        with _log_lock, open(_LOG, "a", encoding="utf-8") as f:
             f.write(time.strftime("%H:%M:%S ") + msg + "\n")
 
 
@@ -215,12 +237,18 @@ def _openai_verdicts(prompt: str, images: list[tuple[int, str]]) -> list | None:
         try:
             req = urllib.request.Request("https://api.openai.com/v1/chat/completions", data=json.dumps(body).encode(), method="POST",
                                          headers={"Content-Type": "application/json", "Authorization": f"Bearer {k['openai']}"})
-            with urllib.request.urlopen(req, timeout=120) as r:
+            with urllib.request.urlopen(req, timeout=60) as r:
                 return _parse_verdicts(json.loads(r.read().decode())["choices"][0]["message"]["content"])
         except urllib.error.HTTPError as e:
             flog(f"vision openai HTTP {e.code}: {e.read().decode(errors='ignore')[:300]}")
-            if e.code in (429, 500, 503) and attempt < 2:
+            if e.code in (429, 500, 502, 503, 504) and attempt < 2:
                 time.sleep(10)
+                continue
+            return None
+        except (urllib.error.URLError, TimeoutError) as e:  # обрыв или таймаут — один повтор, потом Gemini
+            flog(f"vision openai error: {e!r}")
+            if attempt < 1:
+                time.sleep(5)
                 continue
             return None
         except Exception as e:  # noqa: BLE001
@@ -259,45 +287,59 @@ def _thumb_b64(c: dict) -> str | None:
     th_host = urllib.parse.urlparse(c["thumb"]).netloc
     if th_host in _dl_cool:
         return None
-    wait = min(1.0, DL_DELAY.get(th_host, 0)) - (time.time() - _dl_last.get(th_host, 0))
-    if wait > 0:
-        time.sleep(wait)
+    pace(th_host, min(1.0, DL_DELAY.get(th_host, 0)), _dl_last)  # пауза к сайту — общая для всех потоков
     req = urllib.request.Request(c["thumb"], headers={"User-Agent": UA})
-    with urllib.request.urlopen(req, timeout=20) as r:
+    with urllib.request.urlopen(req, timeout=15) as r:
         im = Image.open(io.BytesIO(r.read())).convert("RGB")
-    _dl_last[th_host] = time.time()
     im.thumbnail((512, 512))
     buf = io.BytesIO()
     im.save(buf, "JPEG", quality=80)
     return base64.b64encode(buf.getvalue()).decode()
 
 
+def _safe_thumb(c: dict) -> str | None:
+    try:
+        return _thumb_b64(c)
+    except Exception:  # noqa: BLE001
+        return None
+
+
 def vision_rank(cands: list[dict], q: str, scene: str, need: int, region: str = "", specific: bool = True,
                 kind: str = "image", ctx_text: str = "", ref: bool = False) -> list[dict] | None:
     """Модель смотрит превью до 12 кандидатов и ставит оценку. Возвращает одобренных по убыванию оценки;
-    None — проверка недоступна (нет ключей / ошибка). ref — проверка образцов для ReGen (см. REF_NOTE)."""
+    None — проверка недоступна (нет ключей / ошибка). ref — проверка образцов для ReGen (см. REF_NOTE).
+    Оценки запоминаются (work/vision_cache.json): кадр, уже оценённый для этого запроса, второй раз не смотрим."""
     if not cands:
         return None
+    cands = cands[:12]
+    keys_of = {i: f"v{VISION_VERSION}|{kind}|{int(ref)}|{region}|{q}|{scene[:120]}|{_cand_key(c) or c.get('thumb')}"
+               for i, c in enumerate(cands)}
+    with _vcache_lock:
+        by_i = {i: _VCACHE[k] for i, k in keys_of.items() if k in _VCACHE}
+    todo = [i for i in range(len(cands)) if i not in by_i]
     images = []
-    for i, c in enumerate(cands[:12]):
-        try:
-            b64 = _thumb_b64(c)
-            if b64:
-                images.append((i, b64))
-        except Exception:  # noqa: BLE001
-            continue
-    if not images:
+    if todo:  # превью — параллельно (паузы к одному сайту соблюдает pace)
+        with ThreadPoolExecutor(max_workers=6) as ex:
+            thumbs = list(ex.map(lambda i: _safe_thumb(cands[i]), todo))
+        images = [(i, b64) for i, b64 in zip(todo, thumbs) if b64]
+    if images:
+        prompt = vision_prompt(q, scene, region, specific, kind, ctx_text, ref=ref)
+        verdicts = _openai_verdicts(prompt, images)
+        if verdicts is None:
+            verdicts = _gemini_verdicts(prompt, images)
+        if verdicts is None:
+            log("    ! проверка глазами не удалась (OpenAI и Gemini) — отбираю без неё")
+            return None
+        with _vcache_lock:
+            _vision_calls[0] += 1
+            for v in verdicts:
+                if isinstance(v, dict) and v.get("i") in keys_of:
+                    by_i[v["i"]] = v
+                    _VCACHE[keys_of[v["i"]]] = v
+    elif not by_i:
         return None
-    prompt = vision_prompt(q, scene, region, specific, kind, ctx_text, ref=ref)
-    verdicts = _openai_verdicts(prompt, images)
-    if verdicts is None:
-        verdicts = _gemini_verdicts(prompt, images)
-    if verdicts is None:
-        log("    ! проверка глазами не удалась (OpenAI и Gemini) — отбираю без неё")
-        return None
-    by_i = {v.get("i"): v for v in verdicts if isinstance(v, dict)}
     ranked = []
-    for i, _ in images:
+    for i in sorted(by_i):
         v = by_i.get(i)
         if not v:
             continue
@@ -506,10 +548,12 @@ class SourceStats:
 
     def __init__(self):
         self.by: dict[str, dict] = {}
+        self._lock = threading.Lock()  # шоты идут в несколько потоков
 
     def add(self, source: str, what: str, n: float = 1) -> None:
-        row = self.by.setdefault(source, {k: 0 for k, _ in _REPORT_COLS})
-        row[what] += n
+        with self._lock:
+            row = self.by.setdefault(source, {k: 0 for k, _ in _REPORT_COLS})
+            row[what] += n
 
     def write(self, path: Path, order: dict, warn: list[str], cfg: dict, have_keys: dict, found: dict,
               asked: int, skipped: int, quiet: bool = False) -> None:
@@ -608,27 +652,38 @@ def run_finder(project: Path, settings: dict, script_text: str, ctx: dict | None
     report_path = work / "find_report.txt"
     asked = skipped = 0
     started = time.time()
-    tally = {"vision": 0}  # сколько раз смотрели глазами (деньги OpenAI)
     outcomes: list[dict] = []  # итоги по каждому запросу → журнал поиска (find_history.py)
+    threads = max(1, int(cfg.get("threads", 2)))  # шотов одновременно: почти всё время шот ждёт сеть и OpenAI
+    vmax = max(1, int(cfg.get("visionMax", 6)))   # кандидатов на одну проверку глазами (было до 12 на каждый вариант)
+    state = threading.Lock()   # общие found / used / refs / отчёт — между потоками
+    refs_q = threading.Lock()  # DuckDuckGo и Tavily — одна очередь на все потоки (считают нагрузку по IP)
+    _vision_cache_load(work)
 
     def report(quiet: bool = True) -> None:
-        stats.write(report_path, order, order_warn, cfg, have_keys, found, asked, skipped, quiet=quiet)
+        with state:
+            stats.write(report_path, order, order_warn, cfg, have_keys, found, asked, skipped, quiet=quiet)
     native_queries(reqs, work)
     if not can_see:
         log("  (нет ключа OpenAI/Gemini — отбор по описаниям, без просмотра картинок)")
-    for r in reqs:
+
+    def process(r: dict) -> None:
+        """Один запрос [НАЙТИ]: свои кадры → интернет → скачивание → образцы для ReGen. Идёт в потоке."""
+        nonlocal asked, skipped
         existing = sorted(p for p in media.glob(f"find_{r['slug']}_*") if not p.name.endswith(".part"))
         stale = can_see and (found.get(r["slug"]) or {}).get("v", 1) < VISION_VERSION
         if existing and stale and not force:
             log(f"  «{r['query']}»: найдено прошлой, более мягкой проверкой — перепроверяю")
         elif existing and not force:
             log(f"  «{r['query']}»: уже есть {len(existing)} файл(а) — пропускаю")
-            skipped += 1
-            continue
-        asked += 1
+            with state:
+                skipped += 1
+            return
+        with state:
+            asked += 1
         for p in existing:
             p.unlink()
-        used -= {f.get("url") for f in (found.get(r["slug"]) or {}).get("files", [])}  # свои прошлые находки снова допустимы
+        with state:  # свои прошлые находки снова допустимы
+            used.difference_update(f.get("url") for f in (found.get(r["slug"]) or {}).get("files", []))
         kind_name = {'image': 'фото', 'video': 'видео', 'news': 'хроника', 'amateur': 'любительское видео',
                      'document': 'газеты', 'film': 'кинохроника'}[r['kind']]
         if r.get("auto"):
@@ -655,7 +710,7 @@ def run_finder(project: Path, settings: dict, script_text: str, ctx: dict | None
             for name in order[r["kind"]]:
                 if not sources.has_key(name, have_keys) or _flag(name, "REFS_ONLY") != refs_only or (only and name != only):
                     continue
-                if not sources.fits_region(name, region):
+                if not sources.fits(name, query, r["kind"], region):
                     continue
                 t0 = time.time()
                 try:
@@ -706,7 +761,6 @@ def run_finder(project: Path, settings: dict, script_text: str, ctx: dict | None
                 ok = [c for c in pool if text_match(c) >= (0.75 if _flag(c["source"], "STRICT_TEXT") else 0.5)]
                 flog(f"«{r['query']}» [{label}]: без проверки глазами, по описанию подходят {len(ok)} из {len(pool)}")
                 return ok
-            tally["vision"] += 1
             if count:
                 for c in pool:
                     if c.get("vision"):
@@ -773,19 +827,33 @@ def run_finder(project: Path, settings: dict, script_text: str, ctx: dict | None
         wider = [] if specific else [(w, "en") for w in _broaden(r["query"])]
         for w in wider:
             label_of.setdefault(w, "шире")
+        # два захода, в каждом — ОДНА проверка глазами лучших из общей кучи (вывод EP-14: было до 12 кандидатов
+        # на каждый вариант, 30+ на запрос): 1) «+ страна», «на языке страны», «как есть»; 2) если мало —
+        # «без года» и «шире» вместе с теми, кто не попал в первую проверку
         vision_ok = True
-        for vq, lang in variants + wider:
-            if len(chosen_from) >= r["count"]:
-                break
-            if (vq, lang) in wider and not vision_ok:
-                break  # расширять поиск без проверки глазами опасно — наберём случайного
-            pool = _diverse(gather(vq, lang), 12)
+        budget = min(12, max(vmax, 2 * r["count"]))
+        main = [v for v in variants if label_of.get(v) != "без года"]
+        extra = [v for v in variants if label_of.get(v) == "без года"] + wider
+        left: list[dict] = []  # подошли, но глазам ещё не показаны
+        for vs in (main, extra):
+            if len(chosen_from) >= r["count"] or not vs:
+                continue
+            if vs is extra and not vision_ok:
+                vs = [v for v in vs if v not in wider]  # расширять поиск без проверки глазами опасно — наберём случайного
+            merged = list(left)
+            for vq, lang in vs:
+                for c in gather(vq, lang):
+                    c.setdefault("_variant", label_of.get((vq, lang), "как есть"))
+                    merged.append(c)
+            merged.sort(key=lambda c: -c["score"])
+            pool = _diverse(merged, budget)
+            left = [c for c in merged if c not in pool]
             if not pool:
                 continue
-            ok = judge(pool, f"поиск: {vq}")
+            ok = judge(pool, "поиск: " + " / ".join(q for q, _ in vs))
             vision_ok = ranked is not None
             if ok and not hit[0]:
-                hit[0] = label_of.get((vq, lang), "как есть")
+                hit[0] = ok[0].get("_variant", "как есть")
             chosen_from += ok
         chosen_from.sort(key=lambda c: -float(c.get("rank", c.get("score", 0))))
         # 3) скачивание лучших
@@ -803,6 +871,11 @@ def run_finder(project: Path, settings: dict, script_text: str, ctx: dict | None
                     flog(f"{c['source']}: ссылка на файл не получена: {e!r}")
             if not c.get("url"):
                 continue
+            if not c.get("trusted"):  # соседний поток мог уже взять этот же кадр — занимаем под замком
+                with state:
+                    if c["url"] in used:
+                        continue
+                    used.add(c["url"])
             ext = Path(urllib.parse.urlparse(c["url"]).path).suffix.lower()
             if c["type"] in ("video", "film"):
                 ext = ext if ext in (".mp4", ".webm", ".mov") else ".mp4"
@@ -860,22 +933,24 @@ def run_finder(project: Path, settings: dict, script_text: str, ctx: dict | None
                 entry["check"] = c["vision"]
             saved.append(entry)
             stats.add(c["source"], "saved")
-            used.add(c.get("url"))
+            with state:
+                used.add(c.get("url"))
             log(f"    ✓ {dst.name} — {c['source']}, {LICENSE_TEXT.get(c['license'], c['license'])}: {str(c.get('title'))[:60]}")
         # 4) не хватило свободных кадров — лучшие несвободные как образцы для перерисовки (refs/s_<шот>_N.jpg)
         shot = shot_of.get(r["slug"])
         want_refs = len(saved) < r["count"] and shot is not None and not r.get("auto") and not refs.get(r["slug"])
         if want_refs:  # источники только для образцов (DuckDuckGo, Tavily) — спрашиваем лишь сейчас, когда образец нужен,
             # по очереди из settings.json: следующий — только если предыдущий не дал ни одного кандидата (Tavily — запасной)
-            for name in [n for n in order[r["kind"]] if _flag(n, "REFS_ONLY")]:
-                before = len(nonfree)
-                gather(r["query"], refs_only=True, only=name)
-                if len(nonfree) > before:
-                    break
+            with refs_q:  # DuckDuckGo и Tavily считают нагрузку по IP — по одному запросу на все потоки
+                for name in [n for n in order[r["kind"]] if _flag(n, "REFS_ONLY")]:
+                    before = len(nonfree)
+                    gather(r["query"], refs_only=True, only=name)
+                    if len(nonfree) > before:
+                        break
         if want_refs and nonfree:
             for c in nonfree:
                 c["score"] = heuristic_score(c, r["query"])
-            pool = _diverse(sorted(nonfree, key=lambda c: -c["score"]), 12)
+            pool = _diverse(sorted(nonfree, key=lambda c: -c["score"]), vmax)
             ok = judge(pool, "образцы с закрытыми правами", count=False) or []
             got = []
             for c in ok[:max(1, min(2, r["count"] - len(saved)))]:
@@ -888,28 +963,44 @@ def run_finder(project: Path, settings: dict, script_text: str, ctx: dict | None
                     stats.add(c["source"], "refs")
                     log(f"    ◆ образец {dst.name} — {c['source']}, права закрыты: {str(c.get('title'))[:60]}")
             if got:
-                refs[r["slug"]] = {"shot": shot, "query": r["query"], "files": got}
-                save_json(refs_path, refs)
+                with state:
+                    refs[r["slug"]] = {"shot": shot, "query": r["query"], "files": got}
+                    save_json(refs_path, refs)
         if len(saved) < r["count"] and r.get("auto"):
             log("    · подходящего видео нет — сцена останется с картинкой")
         elif len(saved) < r["count"]:
             log(f"    ! нашлось только {len(saved)} из {r['count']} — заменить своими кадрами или [КАРТИНКА]")
-        found[r["slug"]] = {"query": r["query"], "kind": r["kind"], "files": saved,
-                            "v": VISION_VERSION if (ranked is not None or r["kind"] == "film") else 1}
-        save_json(found_path, found)
         reason = None
         if len(saved) < r["count"]:
             reason = ("никто не нашёл" if not fit_n[0] else "отклонено глазами" if rejects
                       else "найдено, но не скачалось / мало подходящих")
-        outcomes.append({"shot": shot, "query": r["query"], "kind": r["kind"], "auto": bool(r.get("auto")),
-                         "region": region, "era": r.get("era", ""), "need": r["count"], "got": len(saved),
-                         "sources": [f["source"] for f in saved], "variant": hit[0] if saved else None,
-                         "refs": [f["source"] for f in (refs.get(r["slug"]) or {}).get("files", [])] if want_refs else [],
-                         "empty_reason": reason, "rejects": list(dict.fromkeys(rejects))[:3]})
+        with state:
+            found[r["slug"]] = {"query": r["query"], "kind": r["kind"], "files": saved,
+                                "v": VISION_VERSION if (ranked is not None or r["kind"] == "film") else 1}
+            save_json(found_path, found)
+            outcomes.append({"shot": shot, "query": r["query"], "kind": r["kind"], "auto": bool(r.get("auto")),
+                             "region": region, "era": r.get("era", ""), "need": r["count"], "got": len(saved),
+                             "sources": [f["source"] for f in saved], "variant": hit[0] if saved else None,
+                             "refs": [f["source"] for f in (refs.get(r["slug"]) or {}).get("files", [])] if want_refs else [],
+                             "empty_reason": reason, "rejects": list(dict.fromkeys(rejects))[:3]})
         report()  # после каждого запроса — если поиск прервётся, отчёт за сделанное останется
+
+    if threads > 1:
+        log(f"  Шотов одновременно: {threads} (settings.json → finder → threads)")
+    try:
+        with ThreadPoolExecutor(max_workers=threads) as pool_ex:
+            futs = [pool_ex.submit(process, r) for r in reqs]
+            try:
+                for fut in futs:
+                    fut.result()  # ошибка в одном шоте — как раньше, останавливает поиск с понятной причиной
+            except BaseException:
+                pool_ex.shutdown(wait=True, cancel_futures=True)  # начатые шоты доделываются, новые не начинаются
+                raise
+    finally:
+        _vision_cache_save()
     report(quiet=False)
     import find_history
-    find_history.record(project.parent.name, time.time() - started, asked, skipped, stats.by, outcomes, tally["vision"])
+    find_history.record(project.parent.name, time.time() - started, asked, skipped, stats.by, outcomes, _vision_calls[0])
     write_credits(project, found)
     found_sheet(project, found)
 

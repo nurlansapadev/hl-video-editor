@@ -1,6 +1,7 @@
 """NASA Image and Video Library — фото и видео NASA (общественное достояние), без ключа."""
 from __future__ import annotations
 
+import re
 import urllib.parse
 
 from ._http import http_json
@@ -11,6 +12,14 @@ LABEL = "NASA"
 KINDS = ["image", "video", "news", "document"]
 KEY = None
 PRIORITY = 0.9
+# NASA — только по космической теме (Nurlan, EP-14): на остальном EP-13+14 — 342 запроса, 0 скачано
+SPACE = re.compile(r"\b(space|nasa|rocket|launch(pad)?|shuttle|astronauts?|cosmonauts?|apollo|gemini program|mercury program|"
+                   r"saturn v|orbit(al)?|satellites?|moon|lunar|mars|spacecraft|capsule|iss|space station|cape canaveral|"
+                   r"kennedy space center|houston mission control|mission control|spacewalk|telescope|hubble|planets?)\b", re.I)
+
+
+def wants(q: str, kind: str) -> bool:
+    return bool(SPACE.search(q))
 
 
 def search(q: str, kind: str, n: int, lang: str = "en") -> list[dict]:

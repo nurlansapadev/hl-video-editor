@@ -13,6 +13,11 @@ KEY = None
 PRIORITY = 0.9
 
 
+def wants(q: str, kind: str) -> bool:
+    """Только документы (Nurlan, EP-14): на фото LoC отвечает 403 и в EP-13/14 не дал ни одного кадра."""
+    return kind == "document"
+
+
 def search(q: str, kind: str, n: int, lang: str = "en") -> list[dict]:
     if kind == "video":
         return []

@@ -17,12 +17,16 @@
 from __future__ import annotations
 
 import base64
+import http.client
+import io
 import json
 import re
+import threading
 import time
 import urllib.error
 import urllib.request
 import uuid
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from pathlib import Path
 
@@ -40,6 +44,31 @@ PRICE = {ANALYST: {"in": 0.40, "out": 1.60},
 REF_EXT = (".jpg", ".jpeg", ".png", ".webp")
 PASS_SCORE = 7     # правдоподобие ≥ 7 из 10 — принимаем, без перегенерации
 MAX_RETRIES = 1    # сколько раз максимум перегенерировать один референс (ограничитель расходов)
+PARALLEL = 3       # картинок одновременно (Gen и ReGen): каждая ~15–25 с ждёт OpenAI, процессор не грузит
+RETRY_CODES = (429, 500, 502, 503, 504)  # OpenAI перегружен — повторить, а не ронять шот (EP-14: таймауты, 500-е)
+
+
+def _open(make_req, timeout: int) -> dict:
+    """Запрос к OpenAI с двумя повторами при перегрузке (429/5xx) и обрыве / таймауте. → JSON-ответ.
+    Повтор картинки после таймаута может стоить вторую картинку (~$0,01–0,02) — дешевле, чем потерянный шот."""
+    for attempt in range(3):
+        try:
+            with urllib.request.urlopen(make_req(), timeout=timeout) as r:
+                return json.loads(r.read().decode())
+        except urllib.error.HTTPError as e:
+            if e.code in RETRY_CODES and attempt < 2:
+                log(f"    · OpenAI HTTP {e.code} — повтор через {10 * (attempt + 1)} с")
+                time.sleep(10 * (attempt + 1))
+                continue
+            raise
+        except (urllib.error.URLError, TimeoutError, http.client.IncompleteRead, ConnectionError) as e:
+            # IncompleteRead — ответ оборвался посреди картинки (EP-14: 1,6 из 1,9 МБ)
+            if attempt < 2:
+                log(f"    · OpenAI не ответил ({type(e).__name__}) — повтор через 5 с")
+                time.sleep(5)
+                continue
+            raise
+    raise RuntimeError("OpenAI: нет ответа")
 
 ANALYST_PROMPT = """You prepare an image-edit instruction for a history documentary YouTube channel (mid-20th century stories).
 You get a REFERENCE image and the TASK of one shot. The reference is only a starting point: the result must be a NEW
@@ -118,11 +147,31 @@ def _ask(image: bytes, mime: str, text: str, key: str) -> tuple[dict, dict]:
             "messages": [{"role": "user", "content": [
                 {"type": "text", "text": text},
                 {"type": "image_url", "image_url": {"url": f"data:{mime};base64,{b64}", "detail": "low"}}]}]}
-    req = urllib.request.Request("https://api.openai.com/v1/chat/completions", data=json.dumps(body).encode(), method="POST",
-                                 headers={"Content-Type": "application/json", "Authorization": f"Bearer {key}"})
-    with urllib.request.urlopen(req, timeout=120) as r:
-        res = json.loads(r.read().decode())
+    res = _open(lambda: urllib.request.Request(
+        "https://api.openai.com/v1/chat/completions", data=json.dumps(body).encode(), method="POST",
+        headers={"Content-Type": "application/json", "Authorization": f"Bearer {key}"}), timeout=60)
     return json.loads(res["choices"][0]["message"]["content"]), res.get("usage", {})
+
+
+REF_MAX_PX = 2000  # больше — уменьшаем перед отправкой (EP-14: Hopkins 7474×9269 → HTTP 400 «Invalid input image»)
+
+
+def _ref_bytes(path: Path) -> tuple[bytes, str, str]:
+    """Референс как есть или, если больше REF_MAX_PX по длинной стороне, — уменьшенный JPEG. → (байты, mime, имя)."""
+    mime = "image/png" if path.suffix.lower() == ".png" else "image/webp" if path.suffix.lower() == ".webp" else "image/jpeg"
+    try:
+        from PIL import Image
+        Image.MAX_IMAGE_PIXELS = None
+        with Image.open(path) as im:
+            if max(im.size) <= REF_MAX_PX:
+                return path.read_bytes(), mime, path.name
+            im = im.convert("RGB")
+            im.thumbnail((REF_MAX_PX, REF_MAX_PX))
+            buf = io.BytesIO()
+            im.save(buf, "JPEG", quality=90)
+            return buf.getvalue(), "image/jpeg", path.stem + ".jpg"
+    except Exception:  # noqa: BLE001 — не открылось Pillow: шлём как есть, ответ API скажет, что не так
+        return path.read_bytes(), mime, path.name
 
 
 def _multipart(fields: dict, files: list[tuple[str, Path]]) -> tuple[bytes, str]:
@@ -131,9 +180,9 @@ def _multipart(fields: dict, files: list[tuple[str, Path]]) -> tuple[bytes, str]
     for k, v in fields.items():
         out.append(f'--{boundary}\r\nContent-Disposition: form-data; name="{k}"\r\n\r\n{v}\r\n'.encode())
     for name, path in files:
-        mime = "image/png" if path.suffix.lower() == ".png" else "image/webp" if path.suffix.lower() == ".webp" else "image/jpeg"
-        out.append(f'--{boundary}\r\nContent-Disposition: form-data; name="{name}"; filename="{path.name}"\r\n'
-                   f"Content-Type: {mime}\r\n\r\n".encode() + path.read_bytes() + b"\r\n")
+        data, mime, fname = _ref_bytes(path)
+        out.append(f'--{boundary}\r\nContent-Disposition: form-data; name="{name}"; filename="{fname}"\r\n'
+                   f"Content-Type: {mime}\r\n\r\n".encode() + data + b"\r\n")
     out.append(f"--{boundary}--\r\n".encode())
     return b"".join(out), f"multipart/form-data; boundary={boundary}"
 
@@ -142,10 +191,8 @@ def _paint(ref: Path, prompt: str, key: str) -> tuple[bytes, dict]:
     """gpt-image-2.5-sunburst: референс + промт → картинка. → (байты, usage)."""
     data, ctype = _multipart({"model": PAINTER, "prompt": prompt, "size": SIZE, "quality": QUALITY,
                               "output_format": FORMAT, "n": "1"}, [("image", ref)])
-    req = urllib.request.Request("https://api.openai.com/v1/images/edits", data=data, method="POST",
-                                 headers={"Content-Type": ctype, "Authorization": f"Bearer {key}"})
-    with urllib.request.urlopen(req, timeout=300) as r:
-        res = json.loads(r.read().decode())
+    res = _open(lambda: urllib.request.Request("https://api.openai.com/v1/images/edits", data=data, method="POST",
+                                               headers={"Content-Type": ctype, "Authorization": f"Bearer {key}"}), timeout=150)
     return base64.b64decode(res["data"][0]["b64_json"]), res.get("usage", {})
 
 
@@ -170,8 +217,9 @@ def run(ep: Path, shots_filter: set[int] | None = None, force: bool = False, dry
     journal_path = montage / "work" / "regen.json"
     journal = load_json(journal_path, []) or []
     key = _key()
-    n_analyst = n_painter = 0
-    spent = 0.0
+    n = {"analyst": 0, "painter": 0, "spent": 0.0}
+    lock = threading.Lock()
+    jobs: list[tuple[dict, int, Path, Path]] = []
     log(f"▶ ImageReGen {ep.name}: {PAINTER}, {SIZE}, {QUALITY}{' — ТОЛЬКО АНАЛИЗ (--dry)' if dry else ''}")
     for shot in shots:
         no = shot.get("shot_no")
@@ -194,57 +242,70 @@ def run(ep: Path, shots_filter: set[int] | None = None, force: bool = False, dry
             if out.exists() and not force and not dry:
                 log(f"  шот {no}: {out.name} уже есть — пропуск (--force — перезаписать)")
                 continue
-            entry = {"date": datetime.now().isoformat(timespec="seconds"), "shot": no, "ref": ref.name, "out": out.name,
-                     "size": SIZE, "quality": QUALITY}
-            try:
-                mime = "image/png" if ref.suffix.lower() == ".png" else "image/webp" if ref.suffix.lower() == ".webp" else "image/jpeg"
-                analysis, u1 = _ask(ref.read_bytes(), mime, ANALYST_PROMPT.format(task=_task_text(shot)), key)
-                n_analyst += 1
-                c_an = _cost(ANALYST, u1)
-                entry.update({"analysis": analysis, "prompt": analysis.get("prompt", "")})
-                log(f"  шот {no} · {ref.name}: {analysis.get('shows', '')[:90]}")
-                log(f"    промт: {entry['prompt'][:220]}")
-                if dry:
-                    entry["status"] = "dry"
-                else:
-                    t0 = time.time()
-                    prompt, best, attempts, c_img = entry["prompt"], None, [], 0.0
-                    for attempt in range(MAX_RETRIES + 1):
-                        img, u2 = _paint(ref, prompt, key)
-                        n_painter += 1
-                        c_img += _cost(PAINTER, u2)
-                        # проверка правдоподобия результата (gpt-4.1-mini), шкала допуска PASS_SCORE
-                        check, u3 = _ask(img, "image/png", CHECK_PROMPT.format(task=_task_text(shot), prompt=prompt), key)
-                        n_analyst += 1
-                        c_an += _cost(ANALYST, u3)
-                        score = float(check.get("score", 0) or 0)
-                        attempts.append({"prompt": prompt, "score": score, "issues": check.get("issues", [])})
-                        log(f"    попытка {attempt + 1}: правдоподобие {score:g}/10"
-                            + (f" — {'; '.join(check.get('issues', []))[:160]}" if check.get("issues") else ""))
-                        if best is None or score > best[1]:
-                            best = (img, score)
-                        if score >= PASS_SCORE or not check.get("prompt"):
-                            break
-                        prompt = check["prompt"]  # исправленный промт — на следующую попытку
-                    out_dir.mkdir(parents=True, exist_ok=True)
-                    out.write_bytes(best[0])
-                    entry.update({"status": "ok" if best[1] >= PASS_SCORE else "low_score", "model": PAINTER,
-                                  "score": best[1], "attempts": attempts, "cost_image": round(c_img, 5),
-                                  "seconds": round(time.time() - t0)})
-                    log(f"    {'✓' if best[1] >= PASS_SCORE else '~'} {out.name} — правдоподобие {best[1]:g}/10, "
-                        f"${c_an + c_img:.3f}, {entry['seconds']} с")
-                    spent += c_img
-                spent += c_an
-                entry["cost_analysis"] = round(c_an, 5)
-            except urllib.error.HTTPError as e:
-                msg = e.read().decode(errors="ignore")
-                entry.update({"status": "error", "error": f"HTTP {e.code}: {msg[:400]}"})
-                log(f"    ! шот {no}: HTTP {e.code} {'(модерация OpenAI)' if 'moderation' in msg else ''} {msg[:160]}")
-            except Exception as e:  # noqa: BLE001
-                entry.update({"status": "error", "error": repr(e)[:400]})
-                log(f"    ! шот {no}: {e!r}"[:200])
+            jobs.append((shot, no, ref, out))
+
+    def do(job: tuple[dict, int, Path, Path]) -> None:
+        shot, no, ref, out = job
+        entry = {"date": datetime.now().isoformat(timespec="seconds"), "shot": no, "ref": ref.name, "out": out.name,
+                 "size": SIZE, "quality": QUALITY}
+        c_an = c_img = 0.0
+        try:
+            data, mime, _ = _ref_bytes(ref)
+            analysis, u1 = _ask(data, mime, ANALYST_PROMPT.format(task=_task_text(shot)), key)
+            n_an, n_im = 1, 0
+            c_an = _cost(ANALYST, u1)
+            entry.update({"analysis": analysis, "prompt": analysis.get("prompt", "")})
+            log(f"  шот {no} · {ref.name}: {analysis.get('shows', '')[:90]}")
+            log(f"    шот {no} промт: {entry['prompt'][:220]}")
+            if dry:
+                entry["status"] = "dry"
+            else:
+                t0 = time.time()
+                prompt, best, attempts = entry["prompt"], None, []
+                for attempt in range(MAX_RETRIES + 1):
+                    img, u2 = _paint(ref, prompt, key)
+                    n_im += 1
+                    c_img += _cost(PAINTER, u2)
+                    # проверка правдоподобия результата (gpt-4.1-mini), шкала допуска PASS_SCORE
+                    check, u3 = _ask(img, "image/png", CHECK_PROMPT.format(task=_task_text(shot), prompt=prompt), key)
+                    n_an += 1
+                    c_an += _cost(ANALYST, u3)
+                    score = float(check.get("score", 0) or 0)
+                    attempts.append({"prompt": prompt, "score": score, "issues": check.get("issues", [])})
+                    log(f"    шот {no}, попытка {attempt + 1}: правдоподобие {score:g}/10"
+                        + (f" — {'; '.join(check.get('issues', []))[:160]}" if check.get("issues") else ""))
+                    if best is None or score > best[1]:
+                        best = (img, score)
+                    if score >= PASS_SCORE or not check.get("prompt"):
+                        break
+                    prompt = check["prompt"]  # исправленный промт — на следующую попытку
+                out_dir.mkdir(parents=True, exist_ok=True)
+                out.write_bytes(best[0])
+                entry.update({"status": "ok" if best[1] >= PASS_SCORE else "low_score", "model": PAINTER,
+                              "score": best[1], "attempts": attempts, "cost_image": round(c_img, 5),
+                              "seconds": round(time.time() - t0)})
+                log(f"    {'✓' if best[1] >= PASS_SCORE else '~'} {out.name} — правдоподобие {best[1]:g}/10, "
+                    f"${c_an + c_img:.3f}, {entry['seconds']} с")
+            entry["cost_analysis"] = round(c_an, 5)
+            with lock:
+                n["analyst"] += n_an
+                n["painter"] += n_im
+        except urllib.error.HTTPError as e:
+            msg = e.read().decode(errors="ignore")
+            entry.update({"status": "error", "error": f"HTTP {e.code}: {msg[:400]}"})
+            log(f"    ! шот {no}: HTTP {e.code} {'(модерация OpenAI)' if 'moderation' in msg else ''} {msg[:160]}")
+        except Exception as e:  # noqa: BLE001
+            entry.update({"status": "error", "error": repr(e)[:400]})
+            log(f"    ! шот {no}: {e!r}"[:200])
+        with lock:
+            n["spent"] += c_an + c_img
             journal.append(entry)
             save_json(journal_path, journal)
+
+    if len(jobs) > 1:
+        log(f"  картинок: {len(jobs)}, одновременно до {PARALLEL}")
+    with ThreadPoolExecutor(max_workers=PARALLEL) as ex:
+        list(ex.map(do, jobs))
     total = sum(x.get("cost_analysis", 0) + x.get("cost_image", 0) for x in journal)
-    log(f"✔ Готово: запросов {PAINTER} {n_painter}, анализ {ANALYST} {n_analyst} — ${spent:.2f} "
+    log(f"✔ Готово: запросов {PAINTER} {n['painter']}, анализ {ANALYST} {n['analyst']} — ${n['spent']:.2f} "
         f"(за всё время по {ep.name}: ${total:.2f}). Журнал: {journal_path}")

@@ -12,7 +12,7 @@ import sys
 
 import numpy as np
 
-from util import MUSIC_DIR, PRODUCTION, edit_dir, log, save_json
+from util import AUDIO_EXT, MUSIC_DIR, PRODUCTION, edit_dir, log, save_json
 
 SR, HOP, WIN = 22050, 512, 2048
 
@@ -46,7 +46,8 @@ def measure(path) -> dict:
 
 def main(episode: str) -> None:
     stats = {}
-    for f in sorted((PRODUCTION / episode / MUSIC_DIR).glob("*.mp3")):
+    for f in sorted(p for p in (PRODUCTION / episode / MUSIC_DIR).iterdir()
+                    if p.suffix.lower() in AUDIO_EXT):  # mp3, wav… (EP-14: 6 треков wav пропускались)
         stats[f.stem] = measure(f)
         log(f"  {f.stem}: {stats[f.stem]}")
     out = edit_dir(episode) / "work" / "music_stats.json"

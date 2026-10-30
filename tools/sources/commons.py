@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import urllib.parse
 
+from . import is_specific
 from ._http import http_json, strip_html
 from ._license import norm_license
 
@@ -12,6 +13,12 @@ KINDS = ["image", "video", "news", "amateur", "document"]
 KEY = None
 PRIORITY = 0.9
 CHECK_NOT_FREE = True
+
+
+def wants(q: str, kind: str) -> bool:
+    """Видео — только по конкретному запросу (имя, название, год): на общих видео-запросах («family eating pie»)
+    EP-13+14 — 376 кадров на проверку глазами → 5 скачано. Фото, хроника, газеты — всегда (там Commons лучший)."""
+    return kind != "video" or is_specific(q)
 
 
 def search(q: str, kind: str, n: int, lang: str = "en") -> list[dict]:
