@@ -258,7 +258,7 @@ def _openai_verdicts(prompt: str, images: list[tuple[int, str]]) -> list | None:
 
 
 def _gemini_verdicts(prompt: str, images: list[tuple[int, str]]) -> list | None:
-    """Запасной вариант: Gemini (бесплатный уровень, низкие лимиты)."""
+    """Запасной вариант: Gemini (платный уровень с 2026-10-30)."""
     key = keys().get("gemini")
     if not key:
         return None
@@ -266,7 +266,7 @@ def _gemini_verdicts(prompt: str, images: list[tuple[int, str]]) -> list | None:
     for i, b64 in images:
         parts += [{"text": f"Image {i}:"}, {"inline_data": {"mime_type": "image/jpeg", "data": b64}}]
     body = {"contents": [{"parts": parts}], "generationConfig": {"responseMimeType": "application/json", "temperature": 0.1}}
-    for model in ("gemini-flash-latest", "gemini-2.5-flash", "gemini-flash-lite-latest"):
+    for model in ("gemini-3.8-flash", "gemini-3.5-flash-lite", "gemini-flash-latest"):  # 2.5 — только старым пользователям
         try:
             req = urllib.request.Request(f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent",
                                          data=json.dumps(body).encode(), method="POST",
@@ -457,7 +457,7 @@ def _llm_json(prompt: str) -> object | None:
             flog(f"openai text: {e!r}")
     if k.get("gemini"):
         body = {"contents": [{"parts": [{"text": prompt}]}], "generationConfig": {"responseMimeType": "application/json", "temperature": 0.2}}
-        for model in ("gemini-flash-lite-latest", "gemini-flash-latest"):
+        for model in ("gemini-3.5-flash-lite", "gemini-flash-latest"):
             try:
                 req = urllib.request.Request(f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent",
                                              data=json.dumps(body).encode(), method="POST",
