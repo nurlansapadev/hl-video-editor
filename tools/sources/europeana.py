@@ -10,6 +10,7 @@ NAME = "europeana"
 LABEL = "Europeana"
 KINDS = ["image", "video", "news", "amateur", "document"]
 KEY = None
+REGIONS = "europe"  # спрашивается только для запросов про европейскую страну (Nurlan, EP-14)
 
 
 def _license(rights: str) -> str | None:

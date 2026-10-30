@@ -655,6 +655,8 @@ def run_finder(project: Path, settings: dict, script_text: str, ctx: dict | None
             for name in order[r["kind"]]:
                 if not sources.has_key(name, have_keys) or _flag(name, "REFS_ONLY") != refs_only or (only and name != only):
                     continue
+                if not sources.fits_region(name, region):
+                    continue
                 t0 = time.time()
                 try:
                     got = sources.get(name).search(query, r["kind"], max(r["count"], 5), lang)

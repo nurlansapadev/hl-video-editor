@@ -30,7 +30,7 @@
       "film":     ["archive"]
     },
     "_off": "Выключенные источники (не спрашиваются ни для какого вида), например [\"pixabay\"].",
-    "off": []
+    "off": ["openverse"]
   },
   "theme": {
     "style": "documentary",

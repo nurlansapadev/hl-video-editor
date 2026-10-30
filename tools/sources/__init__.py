@@ -13,6 +13,7 @@
   CHECK_NOT_FREE = False              — отсеивать кадры с «Getty», «©», «all rights reserved» в описании
   REFS_ONLY      = False              — только образцы для ReGen (права неизвестны): спрашивается, лишь когда
                                         свободных кадров на шот не хватило (DuckDuckGo)
+  REGIONS        = None | "europe"    — спрашивать только для запросов про эти страны (Europeana — Европа)
   search(q, kind, n, lang="en") -> list[dict]   — обязательно; кандидаты в общем формате:
       {source, type, url, thumb (превью для проверки глазами), page, title, author, license, license_url,
        width, height, [duration, date, text]}
@@ -76,6 +77,24 @@ def priority(name: str) -> float:
 def has_key(name: str, keys: dict) -> bool:
     key = getattr(all_sources()[name], "KEY", None)
     return not key or bool(keys.get(key))
+
+
+# страны data/countries.json (и будущие), которые считаются Европой для REGIONS = "europe"
+EUROPE = {
+    "United Kingdom", "Ireland", "France", "Germany", "West Germany", "East Germany", "Netherlands", "Belgium",
+    "Luxembourg", "Switzerland", "Austria", "Italy", "Vatican", "Spain", "Portugal", "Greece", "Denmark", "Norway",
+    "Sweden", "Finland", "Iceland", "Poland", "Czech Republic", "Czechoslovakia", "Slovakia", "Hungary", "Romania",
+    "Bulgaria", "Yugoslavia", "Serbia", "Croatia", "Slovenia", "Bosnia and Herzegovina", "Albania", "Ukraine",
+    "Belarus", "Lithuania", "Latvia", "Estonia", "Russia", "Soviet Union", "Turkey", "Malta", "Cyprus", "Monaco",
+}
+
+
+def fits_region(name: str, region: str) -> bool:
+    """Подходит ли источник стране запроса (REGIONS). Источник без REGIONS — для всех."""
+    want = getattr(all_sources()[name], "REGIONS", None)
+    if want == "europe":
+        return region in EUROPE
+    return True
 
 
 def order(cfg: dict) -> tuple[dict[str, list[str]], list[str]]:

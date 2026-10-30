@@ -730,5 +730,225 @@
     "aliases": [
       "France"
     ]
+  },
+  "Fayetteville": {
+    "lat": 35.0527,
+    "lon": -78.8784,
+    "aliases": [
+      "Fayetteville, North Carolina",
+      "first Golden Corral"
+    ]
+  },
+  "Flushing Meadows": {
+    "lat": 40.74,
+    "lon": -73.8407,
+    "aliases": [
+      "1939 New York World's Fair",
+      "Queens",
+      "Swedish pavilion"
+    ]
+  },
+  "Three Crowns Restaurant": {
+    "lat": 40.7614,
+    "lon": -73.9748,
+    "aliases": [
+      "12 East 54th Street",
+      "Manhattan"
+    ]
+  },
+  "El Rancho Vegas": {
+    "lat": 36.143,
+    "lon": -115.157,
+    "aliases": [
+      "Las Vegas",
+      "Buckaroo Buffet"
+    ]
+  },
+  "Monroeville": {
+    "lat": 40.4212,
+    "lon": -79.7881,
+    "aliases": [
+      "American Style Smorgasbord",
+      "Ohio and Pennsylvania"
+    ]
+  },
+  "Virginia Beach": {
+    "lat": 36.8529,
+    "lon": -75.978,
+    "aliases": []
+  },
+  "Bensalem": {
+    "lat": 40.1046,
+    "lon": -74.9516,
+    "aliases": [
+      "Golden Corral on Street Road",
+      "Bensalem, Pennsylvania"
+    ]
+  },
+  "Brownsville": {
+    "lat": 25.9017,
+    "lon": -97.4975,
+    "aliases": [
+      "Brownsville, Texas"
+    ]
+  },
+  "Baytown": {
+    "lat": 29.7355,
+    "lon": -94.9774,
+    "aliases": [
+      "Baytown, Texas"
+    ]
+  },
+  "Southern Pines": {
+    "lat": 35.174,
+    "lon": -79.3925,
+    "aliases": [
+      "Golden Corral Favorites",
+      "Homeward Kitchen"
+    ]
+  },
+  "Joplin": {
+    "lat": 37.0842,
+    "lon": -94.5133,
+    "aliases": [
+      "Joplin, Missouri"
+    ]
+  },
+  "Winter Park": {
+    "lat": 28.6,
+    "lon": -81.3392,
+    "aliases": [
+      "1069 Restaurant Group"
+    ]
+  },
+  "Puerto Rico": {
+    "lat": 18.2208,
+    "lon": -66.5901,
+    "aliases": []
+  },
+  "Market Street, Center City Philadelphia": {
+    "lat": 39.9515,
+    "lon": -75.157,
+    "aliases": [
+      "Center City",
+      "Market Street",
+      "downtown Philadelphia"
+    ]
+  },
+  "Wanamaker's": {
+    "lat": 39.9516,
+    "lon": -75.1618,
+    "aliases": [
+      "John Wanamaker department store",
+      "13th and Market"
+    ]
+  },
+  "Gimbels Philadelphia": {
+    "lat": 39.951,
+    "lon": -75.1535,
+    "aliases": [
+      "Gimbel Brothers",
+      "8th and Market"
+    ]
+  },
+  "Strawbridge & Clothier": {
+    "lat": 39.9518,
+    "lon": -75.1533,
+    "aliases": [
+      "Strawbridge's",
+      "801 Market Street"
+    ]
+  },
+  "Lit Brothers": {
+    "lat": 39.9518,
+    "lon": -75.1517,
+    "aliases": [
+      "Lit Brothers department store",
+      "7th and Market"
+    ]
+  },
+  "Philadelphia Municipal Stadium": {
+    "lat": 39.901,
+    "lon": -75.172,
+    "aliases": [
+      "JFK Stadium (с 1964)",
+      "South Philly",
+      "Army-Navy game"
+    ]
+  },
+  "Philadelphia City Hall": {
+    "lat": 39.9526,
+    "lon": -75.1635,
+    "aliases": [
+      "City Hall",
+      "office of the City Representative"
+    ]
+  },
+  "Cherry Hill Mall": {
+    "lat": 39.9406,
+    "lon": -75.0115,
+    "aliases": [
+      "Cherry Hill, New Jersey"
+    ]
+  },
+  "Moorestown Mall": {
+    "lat": 39.9636,
+    "lon": -74.9439,
+    "aliases": [
+      "Moorestown, New Jersey"
+    ]
+  },
+  "New York Gold Room": {
+    "lat": 40.7063,
+    "lon": -74.009,
+    "aliases": [
+      "Wall Street",
+      "Gold Exchange",
+      "Black Friday 1869"
+    ]
+  },
+  "Campobello Island": {
+    "lat": 44.877,
+    "lon": -66.948,
+    "aliases": [
+      "Roosevelt Campobello",
+      "summer place across the border from Maine"
+    ]
+  },
+  "Plymouth": {
+    "lat": 41.9584,
+    "lon": -70.6673,
+    "aliases": [
+      "Plymouth, Massachusetts",
+      "Plymouth Rock"
+    ]
+  },
+  "Atlantic City": {
+    "lat": 39.3643,
+    "lon": -74.4229,
+    "aliases": [
+      "Atlantic City, New Jersey"
+    ]
+  },
+  "Shortsville": {
+    "lat": 42.9562,
+    "lon": -77.2214,
+    "aliases": [
+      "upstate New York",
+      "Rochester area"
+    ]
+  },
+  "Cincinnati": {
+    "lat": 39.1031,
+    "lon": -84.512,
+    "aliases": []
+  },
+  "Kemmerer": {
+    "lat": 41.7925,
+    "lon": -110.5374,
+    "aliases": [
+      "Kemmerer, Wyoming",
+      "Golden Rule store"
+    ]
   }
 }
