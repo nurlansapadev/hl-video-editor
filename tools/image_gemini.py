@@ -9,8 +9,9 @@
 Сбой ответа (429, 500, 503, таймаут) — до 3 повторов с паузой; отказ по безопасности — шот пропускается.
 
 Картинки на бесплатном уровне Gemini API недоступны (лимит 0): нужен проект AI Studio с включённой оплатой.
-Цена 1K-картинки (ai.google.dev/gemini-api/docs/pricing, 2026-10): gemini-3.1-flash-image $0,067,
-gemini-3.1-flash-lite-image $0,034, gemini-3-pro-image $0,134 (OpenAI Gen для сравнения ~$0,009).
+Цена 1K-картинки (ai.google.dev/gemini-api/docs/pricing, 2026-10-28): gemini-nano-banana-2.1 $0,034 (основная),
+gemini-3.1-flash-lite-image $0,034, gemini-3.1-flash-image $0,067, gemini-3-pro-image $0,134 (OpenAI ~$0,009–0,017).
+С 2026-10-30 подключён как автозамена: image_generator / image_regenerator зовут paint_one(), если OpenAI не ответил.
 
   .venv/Scripts/python.exe tools/image_gemini.py gen ep-13 [--shots 32,37] [--force] [--dry] [--model …]
   .venv/Scripts/python.exe tools/image_gemini.py regen ep-13 [--shots 63] [--force] [--dry]
@@ -35,19 +36,21 @@ from image_regenerator import (ANALYST_PROMPT, CHECK_PROMPT, FORMAT, MAX_RETRIES
                                _blocked_person, _task_text, is_video)
 from util import CHARACTERS_DIR, EDIT_DIR, GENERATED_DIR, PRODUCTION, gemini_key, load_json, log, save_json
 
-PAINTER = "gemini-3.1-flash-image"  # Nano Banana 2; дешевле — gemini-3.1-flash-lite-image (--model)
-ANALYST = "gemini-flash-latest"     # анализ референса и проверка правдоподобия
-ANALYSTS = (ANALYST, "gemini-2.5-flash", "gemini-flash-lite-latest")  # основная перегружена (503) — следующая
+PAINTER = "gemini-nano-banana-2.1"  # Nano Banana 2.1: 1K $0,034, лучше NB2 ($0,067) — выбор Nurlan 2026-10-30
+PAINTERS = (PAINTER, "gemini-3.1-flash-lite-image")  # 2.1 не отвечает — Lite (та же цена, попроще)
+ANALYST = "gemini-3.8-flash"       # анализ референса и проверка правдоподобия
+ANALYSTS = (ANALYST, "gemini-3.5-flash-lite", "gemini-flash-latest")  # 2.5 Google открывает только старым пользователям
 SIZE = (1280, 720)                  # как у OpenAI Gen / ReGen
 TIMEOUT = 120                       # картинка; анализ и проверка — ANALYST_TIMEOUT
 ANALYST_TIMEOUT = 45
 RETRY_WAIT = (10, 30)               # паузы перед повторами при 429 / 5xx / таймауте
-# $ за 1 млн токенов (ai.google.dev/gemini-api/docs/pricing, 2026-10): картинка на выходе и текст
-PRICE = {"gemini-3.1-flash-image": {"in": 0.50, "out_image": 60.0, "out_text": 3.0},
+# $ за 1 млн токенов (ai.google.dev/gemini-api/docs/pricing, 2026-10-28): картинка на выходе и текст
+PRICE = {"gemini-nano-banana-2.1": {"in": 0.25, "out_image": 30.0, "out_text": 1.5},
+         "gemini-3.1-flash-image": {"in": 0.50, "out_image": 60.0, "out_text": 3.0},
          "gemini-3.1-flash-lite-image": {"in": 0.25, "out_image": 30.0, "out_text": 1.5},
          "gemini-3-pro-image": {"in": 2.0, "out_image": 120.0, "out_text": 12.0},
-         ANALYST: {"in": 0.30, "out_text": 2.50}, "gemini-2.5-flash": {"in": 0.30, "out_text": 2.50},
-         "gemini-flash-lite-latest": {"in": 0.10, "out_text": 0.40}}
+         ANALYST: {"in": 0.50, "out_text": 3.0}, "gemini-3.5-flash-lite": {"in": 0.10, "out_text": 0.40},
+         "gemini-flash-latest": {"in": 0.30, "out_text": 2.50}}
 API = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
 
 
@@ -160,6 +163,68 @@ def _best_of(model: str, prompt: str, shot: dict, key: str, ref: Path | None) ->
     return best[0], best[1], attempts, c_img, c_an
 
 
+def paint_one(mode: str, shot: dict, ref: Path | None, out: Path, key: str | None = None, model: str = PAINTER,
+              dry: bool = False) -> dict:
+    """Один шот: gen (ref=None) — промт из «generate»; regen — анализ референса → промт. Картинка → проверка →
+    out. → запись журнала (status, score, cost_*). Вызывают run() и, при сбое OpenAI, image_generator / image_regenerator."""
+    no = shot.get("shot_no")
+    entry = {"date": datetime.now().isoformat(timespec="seconds"), "tool": f"{mode}-gemini", "shot": no,
+             "out": out.name, "size": f"{SIZE[0]}x{SIZE[1]}", "model": model}
+    c_an = c_img = 0.0
+    t0 = time.time()
+    try:
+        if not (dry and ref is None):  # gen --dry — только промт, ключ не нужен
+            key = key or _key()
+        if ref is None:
+            gen = shot["generate"].strip().rstrip(".")
+            prompt = f"{gen}. {_suffix(gen, shot.get('epoch', ''))} {NO_BRANDS}"
+            log(f"  шот {no} (Gemini): {prompt[:200]}")
+        else:
+            entry["ref"] = ref.name
+            analysis, c_an = _ask(ref.read_bytes(), _mime(ref), ANALYST_PROMPT.format(task=_task_text(shot)), key)
+            prompt = analysis.get("prompt", "")
+            entry["analysis"] = analysis
+            log(f"  шот {no} · {ref.name} (Gemini): {analysis.get('shows', '')[:90]}")
+            log(f"    промт: {prompt[:220]}")
+        entry["prompt"] = prompt
+        if dry:
+            entry["status"] = "dry"
+        else:
+            err = None
+            for m in (model,) + tuple(x for x in PAINTERS if x != model):
+                try:
+                    img, score, attempts, c_img, c = _best_of(m, prompt, shot, key, ref)
+                    entry["model"] = m
+                    break
+                except Refused:
+                    raise
+                except RuntimeError as e:  # модель перегружена и после повторов — следующая
+                    err = e
+                    log(f"    · {m} недоступна — пробую следующую")
+            else:
+                raise err
+            c_an += c
+            out.parent.mkdir(parents=True, exist_ok=True)
+            out.write_bytes(img)
+            entry.update({"status": "ok" if score >= PASS_SCORE else "low_score", "score": score,
+                          "attempts": attempts, "seconds": round(time.time() - t0)})
+            log(f"    {'✓' if score >= PASS_SCORE else '~'} {out.name} (Gemini {entry['model']}) — правдоподобие "
+                f"{score:g}/10, ${c_an + c_img:.3f}, {entry['seconds']} с")
+    except Refused as e:
+        entry.update({"status": "refused", "error": str(e)})
+        log(f"    ! шот {no}: Gemini отказался рисовать ({e}) — переписать задание нейтральнее")
+    except (Exception, SystemExit) as e:  # noqa: BLE001 — SystemExit: нет ключа / лимит 0
+        entry.update({"status": "error", "error": repr(e)[:400]})
+        log(f"    ! шот {no} (Gemini): {e!r}"[:200])
+    entry.update({"cost_analysis": round(c_an, 5), "cost_image": round(c_img, 5)})
+    return entry
+
+
+def fallback_ok() -> bool:
+    """Есть ли ключ Gemini для запасного пути (без ключа OpenAI-инструменты просто пишут ошибку, как раньше)."""
+    return bool(gemini_key())
+
+
 def run(mode: str, ep: Path, shots_filter: set[int] | None = None, force: bool = False, dry: bool = False,
         model: str = PAINTER) -> None:
     montage = ep / EDIT_DIR
@@ -197,42 +262,9 @@ def run(mode: str, ep: Path, shots_filter: set[int] | None = None, force: bool =
             if out.exists() and not force and not dry:
                 log(f"  шот {no}: {out.name} уже есть — пропуск (--force — перезаписать)")
                 continue
-            entry = {"date": datetime.now().isoformat(timespec="seconds"), "tool": f"{mode}-gemini", "shot": no,
-                     "out": out.name, "size": f"{SIZE[0]}x{SIZE[1]}", "model": model}
-            c_an = c_img = 0.0
-            t0 = time.time()
-            try:
-                if ref is None:
-                    gen = shot["generate"].strip().rstrip(".")
-                    prompt = f"{gen}. {_suffix(gen, shot.get('epoch', ''))} {NO_BRANDS}"
-                    log(f"  шот {no}: {prompt[:200]}")
-                else:
-                    entry["ref"] = ref.name
-                    analysis, c_an = _ask(ref.read_bytes(), _mime(ref), ANALYST_PROMPT.format(task=_task_text(shot)), key)
-                    prompt = analysis.get("prompt", "")
-                    entry["analysis"] = analysis
-                    log(f"  шот {no} · {ref.name}: {analysis.get('shows', '')[:90]}")
-                    log(f"    промт: {prompt[:220]}")
-                entry["prompt"] = prompt
-                if dry:
-                    entry["status"] = "dry"
-                else:
-                    img, score, attempts, c_img, c = _best_of(model, prompt, shot, key, ref)
-                    c_an += c
-                    n_img += len(attempts)
-                    out_dir.mkdir(parents=True, exist_ok=True)
-                    out.write_bytes(img)
-                    entry.update({"status": "ok" if score >= PASS_SCORE else "low_score", "score": score,
-                                  "attempts": attempts, "seconds": round(time.time() - t0)})
-                    log(f"    {'✓' if score >= PASS_SCORE else '~'} {out.name} — правдоподобие {score:g}/10, "
-                        f"${c_an + c_img:.3f}, {entry['seconds']} с")
-            except Refused as e:
-                entry.update({"status": "refused", "error": str(e)})
-                log(f"    ! шот {no}: Gemini отказался рисовать ({e}) — переписать задание нейтральнее")
-            except Exception as e:  # noqa: BLE001
-                entry.update({"status": "error", "error": repr(e)[:400]})
-                log(f"    ! шот {no}: {e!r}"[:200])
-            entry.update({"cost_analysis": round(c_an, 5), "cost_image": round(c_img, 5)})
+            entry = paint_one(mode, shot, ref, out, key, model, dry)
+            c_an, c_img = entry["cost_analysis"], entry["cost_image"]
+            n_img += len(entry.get("attempts", []))
             spent += c_an + c_img
             if not (dry and mode == "gen"):
                 journal.append(entry)
@@ -249,7 +281,7 @@ def main() -> None:
     ap.add_argument("--shots", help="номера шотов через запятую: 32,37")
     ap.add_argument("--force", action="store_true", help="перезаписать готовые файлы")
     ap.add_argument("--dry", action="store_true", help="gen — только промты; regen — только анализ и промт")
-    ap.add_argument("--model", default=PAINTER, choices=sorted(m for m in PRICE if m != ANALYST))
+    ap.add_argument("--model", default=PAINTER, choices=sorted(m for m in PRICE if "image" in m or "banana" in m))
     a = ap.parse_args()
     ep = PRODUCTION / a.episode
     if not ep.is_dir():

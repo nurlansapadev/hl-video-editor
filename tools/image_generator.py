@@ -107,6 +107,20 @@ def run(ep: Path, shots_filter: set[int] | None = None, force: bool = False, dry
         if not dry:
             jobs.append((shot, no, out, prompt))
 
+    def _gemini_fallback(mode: str, shot: dict, ref, out: Path, failed: dict) -> None:
+        """OpenAI не справился (таймаут, 5xx, обрыв, отказ модерации) — этот шот рисует Gemini (с 2026-10-30, Nurlan).
+        ReGravure сюда не ходит: гравюры только OpenAI."""
+        from image_gemini import fallback_ok, paint_one  # здесь: image_gemini сам импортирует этот модуль
+        if not fallback_ok():
+            return
+        log(f"    → шот {shot.get('shot_no')}: OpenAI не справился ({failed.get('error', '')[:60]}) — рисую через Gemini")
+        g = paint_one(mode, shot, ref, out)
+        g["fallback_for"] = failed.get("error", "")[:200]
+        with lock:
+            n["spent"] += g["cost_analysis"] + g["cost_image"]
+            journal.append(g)
+            save_json(journal_path, journal)
+
     def do(job: tuple[dict, int, Path, str]) -> None:
         shot, no, out, prompt = job
         entry = {"date": datetime.now().isoformat(timespec="seconds"), "tool": "gen", "shot": no, "out": out.name,
@@ -150,6 +164,8 @@ def run(ep: Path, shots_filter: set[int] | None = None, force: bool = False, dry
             n["spent"] += c_an + c_img
             journal.append(entry)
             save_json(journal_path, journal)
+        if entry.get("status") == "error" and not dry:
+            _gemini_fallback("gen", shot, None, out, entry)
 
     if len(jobs) > 1:
         log(f"  картинок: {len(jobs)}, одновременно до {PARALLEL}")
