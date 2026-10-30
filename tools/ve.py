@@ -763,7 +763,7 @@ def main() -> None:
     ap = argparse.ArgumentParser(description="VideoEditor 2.0", formatter_class=argparse.RawDescriptionHelpFormatter, epilog=__doc__)
     ap.add_argument("command", choices=["prepare", "passport", "index", "prompts", "find", "inputs", "analyze", "empty", "plan",
                                         "render", "check", "studio", "regen", "gen", "regravure", "refs", "shotrefs",
-                                        "findstats", "fill"])
+                                        "findstats", "fill", "report"])
     ap.add_argument("episode", nargs="?", help="папка эпизода в production/honest-lies, например ep-7 (findstats — не нужен)")
     ap.add_argument("--force", action="store_true", help="пересобрать заново (поиск / расшифровку / ручной план / regen: перезаписать)")
     ap.add_argument("--preview", action="store_true", help="render: черновик в половинном разрешении")
@@ -783,6 +783,19 @@ def main() -> None:
     project = edit_dir(a.episode)
     if a.command != "prepare" and not project.exists():
         die(f"Нет {project} — сначала prepare")
+    if a.command == "report":
+        return __import__("episode_report").report(ep)
+    import usage  # время и деньги каждой команды → work/usage.jsonl (отчёт — ve.py report)
+    t0, ok = time.time(), False
+    try:
+        _dispatch(a, ep, project)
+        ok = True
+    finally:
+        if a.command != "studio":
+            usage.flush(project, a.command, time.time() - t0, ok)
+
+
+def _dispatch(a, ep: Path, project: Path) -> None:
     {"prepare": lambda: cmd_prepare(ep, project),
      "passport": lambda: cmd_passport(ep, project, a.apply, a.force),
      "index": lambda: cmd_index(ep),

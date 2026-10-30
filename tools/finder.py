@@ -31,6 +31,7 @@ from sources import local as src_local
 from sources._http import (DL_DELAY, UA, SourceBlocked, _dl_cool, _dl_last, download, http_json, keys, pace,
                            strip_html)
 from sources._license import LICENSE_TEXT, NOT_FREE, norm_license
+import usage
 from util import load_json, log, run, save_json
 
 IMAGE_EXT = (".jpg", ".jpeg", ".png", ".webp", ".tif", ".tiff")
@@ -238,7 +239,9 @@ def _openai_verdicts(prompt: str, images: list[tuple[int, str]]) -> list | None:
             req = urllib.request.Request("https://api.openai.com/v1/chat/completions", data=json.dumps(body).encode(), method="POST",
                                          headers={"Content-Type": "application/json", "Authorization": f"Bearer {k['openai']}"})
             with urllib.request.urlopen(req, timeout=60) as r:
-                return _parse_verdicts(json.loads(r.read().decode())["choices"][0]["message"]["content"])
+                res = json.loads(r.read().decode())
+            usage.add("OpenAI", body["model"], usage.openai_usd(body["model"], res.get("usage")), "проверка кадров")
+            return _parse_verdicts(res["choices"][0]["message"]["content"])
         except urllib.error.HTTPError as e:
             flog(f"vision openai HTTP {e.code}: {e.read().decode(errors='ignore')[:300]}")
             if e.code in (429, 500, 502, 503, 504) and attempt < 2:
@@ -273,6 +276,7 @@ def _gemini_verdicts(prompt: str, images: list[tuple[int, str]]) -> list | None:
                                          headers={"Content-Type": "application/json", "x-goog-api-key": key})
             with urllib.request.urlopen(req, timeout=90) as r:
                 res = json.loads(r.read().decode())
+            usage.add("Gemini", model, usage.gemini_usd(model, res), "проверка кадров")
             return _parse_verdicts("".join(p.get("text", "") for p in res["candidates"][0]["content"]["parts"]))
         except urllib.error.HTTPError as e:
             flog(f"vision gemini {model} HTTP {e.code}: {e.read().decode(errors='ignore')[:300]}")
@@ -452,7 +456,9 @@ def _llm_json(prompt: str) -> object | None:
             req = urllib.request.Request("https://api.openai.com/v1/chat/completions", data=json.dumps(body).encode(), method="POST",
                                          headers={"Content-Type": "application/json", "Authorization": f"Bearer {k['openai']}"})
             with urllib.request.urlopen(req, timeout=60) as r:
-                return json.loads(json.loads(r.read().decode())["choices"][0]["message"]["content"])
+                res = json.loads(r.read().decode())
+            usage.add("OpenAI", body["model"], usage.openai_usd(body["model"], res.get("usage")), "запросы поиска")
+            return json.loads(res["choices"][0]["message"]["content"])
         except Exception as e:  # noqa: BLE001
             flog(f"openai text: {e!r}")
     if k.get("gemini"):
@@ -464,6 +470,7 @@ def _llm_json(prompt: str) -> object | None:
                                              headers={"Content-Type": "application/json", "x-goog-api-key": k["gemini"]})
                 with urllib.request.urlopen(req, timeout=60) as r:
                     res = json.loads(r.read().decode())
+                usage.add("Gemini", model, usage.gemini_usd(model, res), "запросы поиска")
                 text = "".join(p.get("text", "") for p in res["candidates"][0]["content"]["parts"])
                 return json.loads(re.sub(r"^```(?:json)?|```$", "", text.strip(), flags=re.M).strip())
             except Exception as e:  # noqa: BLE001

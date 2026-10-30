@@ -65,7 +65,7 @@ Nurlan делает озвучку в ElevenLabs параллельно, не т
 6а. `ve.py fill ep-N` — сразу после `find`, без остановки на Nurlan: шоты с образцом в `refs\` (закрытые права, DuckDuckGo, Tavily) → `ep-N-shots.json` → ReGen → совсем пустой шот с оценкой ≥ 7 сам получает `[СЦЕНА: N-1-rg]` в `script.txt` (запрос — строкой `# найти было:`). `work\fill_sheet.jpg` — глазами; «на просмотр» (частично закрытые, оценка < 7) решаю сам. Расход картинок эпизода — в итоге; от $5 — сказать Nurlan (лимитов нет: ~$2 обычно, $3 нормально).
 7. Пустые шоты — **сразу Gen** (сцена без лица: со спины, интерьер, здание), видео-шоты — `kind: любое`. Nurlan в `to-find-manually.json` достаются **только портреты**, которых нет нигде (EP-10: Захарский и Белл — одной картинкой).
 8. `analyze` (голос уже распознан на шаге 2 — секунды) → `empty` → `tools\music_pick.py ep-N` (музыка из фонотеки сама) → `plan` → `tools\plan_check.py ep-N` → правки → сводка → `render` сразу, без ожидания (EP-14).
-9. `render` в фоне → `check` по частям → `ep-N_description.txt`.
+9. `render` в фоне → `check` по частям → `ep-N_description.txt` → **`ve.py report ep-N`** — отчёт Nurlan (время по шагам, деньги OpenAI / Gemini, кредиты ElevenLabs, сравнение с прошлыми эпизодами) — его таблицы показать в итоге эпизода.
 
 ### Этап 1 — только сценарий (озвучки ещё нет)
 
@@ -185,7 +185,7 @@ Nurlan делает озвучку в ElevenLabs параллельно, не т
 | `09_final_assets\ep-NN-final.mp4` | готовый ролик |
 Слова, главы, shotlist пишутся командой `plan` (и обновляются при `render`). `ep-N-shots.json` — **другой** файл (пробелы для Nurlan, вход ReGen/Gen), Wrapper его не читает.
 
-**6. Уроки** — после каждого эпизода: записать в `LESSONS.md` (формат там), спросить Nurlan, какие уроки перевести в правила `STYLE.md`/`CLAUDE.md`.
+**6. Отчёт и уроки.** `ve.py report ep-N` → `output\ep-N_report.md` (с EP-15, решение Nurlan): время каждой команды и деньги пишутся сами в `work\usage.jsonl` (проверка кадров, описания своих кадров, подбор музыки) и `work\regen.json` (картинки, OpenAI и Gemini); сводка по эпизодам — `data\episode_reports.jsonl`. Сбои OpenAI без ответа в сумму не входят (могли быть оплачены) — отчёт пишет их число. Уроки — после каждого эпизода: записать в `LESSONS.md` (формат там), спросить Nurlan, какие уроки перевести в правила `STYLE.md`/`CLAUDE.md`.
 
 ## Команды программы (запускает Claude, не Nurlan)
 `.venv\Scripts\python.exe tools\ve.py <команда> ep-N` (переменные: `HF_HOME=D:\YouTube-Studio\.cache\hf`, `PYTHONUTF8=1`). Долгие — в фоне.
@@ -202,7 +202,7 @@ Nurlan делает озвучку в ElevenLabs параллельно, не т
 | 4 | `empty` | пустые сцены → `06_montage\empty_scenes.json`; решения Nurlan вписать в `choice` (card / nearby) |
 | 4 | `plan` | план + сводка; стоп, если нет музыки / картинок / решений |
 | 4 | `render` | сразу после сводки плана (EP-14), если проверки чистые; результат — `06_montage\ep-N_vK.mp4` (`--preview` — черновик, `--part 50-70` — кусок) |
-| 4 | `check` | контрольный лист `06_montage\work\check.jpg` |
+| 4 | `check` | контрольный лист `06_montage\work\check.jpg` |\n| конец | `report` | отчёт эпизода: время по шагам, деньги OpenAI / Gemini, ElevenLabs → `output\ep-N_report.md` |
 | — | `studio` | монтаж в браузере без рендера |
 | — | `regen` | **ImageReGen**: новые фото по референсам `06_montage\refs\s_<шот>_N.jpg` → `03_generated\<шот>-<N>-rg.png` (`63-1-rg.png`, `63-2-rg.png`). `--shots 63,71`, `--dry` (только анализ и промт), `--force` (перезаписать) |
 | — | `gen` | **ImageGenerator (Gen)**: фото с нуля для шотов с `generate` и без референса → `03_generated\<шот>-g.png`. `--shots`, `--dry` (только промты, бесплатно), `--force` |

@@ -34,7 +34,7 @@ from pathlib import Path
 from image_generator import NO_BRANDS, _suffix
 from image_regenerator import (ANALYST_PROMPT, CHECK_PROMPT, FORMAT, MAX_RETRIES, PASS_SCORE, REF_EXT,
                                _blocked_person, _task_text, is_video)
-from util import CHARACTERS_DIR, EDIT_DIR, GENERATED_DIR, PRODUCTION, gemini_key, load_json, log, save_json
+from util import CHARACTERS_DIR, EDIT_DIR, GENERATED_DIR, PRODUCTION, gemini_key, load_json, log, journal_add, save_json
 
 PAINTER = "gemini-nano-banana-2.1"  # Nano Banana 2.1: 1K $0,034, лучше NB2 ($0,067) — выбор Nurlan 2026-10-30
 PAINTERS = (PAINTER, "gemini-3.1-flash-lite-image")  # 2.1 не отвечает — Lite (та же цена, попроще)
@@ -49,7 +49,7 @@ PRICE = {"gemini-nano-banana-2.1": {"in": 0.25, "out_image": 30.0, "out_text": 1
          "gemini-3.1-flash-image": {"in": 0.50, "out_image": 60.0, "out_text": 3.0},
          "gemini-3.1-flash-lite-image": {"in": 0.25, "out_image": 30.0, "out_text": 1.5},
          "gemini-3-pro-image": {"in": 2.0, "out_image": 120.0, "out_text": 12.0},
-         ANALYST: {"in": 0.50, "out_text": 3.0}, "gemini-3.5-flash-lite": {"in": 0.10, "out_text": 0.40},
+         ANALYST: {"in": 0.75, "out_text": 3.75}, "gemini-3.5-flash-lite": {"in": 0.30, "out_text": 2.50},  # 3.8 — до 31.12.2026
          "gemini-flash-latest": {"in": 0.30, "out_text": 2.50}}
 API = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
 
@@ -268,8 +268,8 @@ def run(mode: str, ep: Path, shots_filter: set[int] | None = None, force: bool =
             spent += c_an + c_img
             if not (dry and mode == "gen"):
                 journal.append(entry)
-                save_json(journal_path, journal)
-    total = sum(x.get("cost_analysis", 0) + x.get("cost_image", 0) for x in journal)
+                journal_add(journal_path, entry)
+    total = sum(x.get("cost_analysis", 0) + x.get("cost_image", 0) for x in (load_json(journal_path, []) or []))
     log(f"✔ Готово: картинок {model} {n_img} — ${spent:.2f} (за всё время по {ep.name}, все инструменты: ${total:.2f}). "
         f"Журнал: {journal_path}")
 

@@ -25,7 +25,7 @@ from pathlib import Path
 
 from image_regenerator import (ANALYST, FORMAT, MAX_RETRIES, PAINTER, PASS_SCORE, QUALITY, REF_EXT, SIZE, _ask, _cost, _key,
                                _paint, _ref_bytes)
-from util import CHARACTERS_DIR, EDIT_DIR, load_json, log, save_json
+from util import CHARACTERS_DIR, EDIT_DIR, load_json, log, journal_add, save_json
 
 # промт Nurlan (2026-10-20) — слово в слово; {pron} — his / her по референсу
 GRAVURE_PROMPT = ("Using the provided reference image, generate an engraving illustration of the character while strictly "
@@ -144,9 +144,9 @@ def run(ep: Path, ids_filter: set[str] | None = None, force: bool = False, dry: 
         entry.update({"cost_analysis": round(c_an, 5), "cost_image": round(c_img, 5)})
         spent += c_an + c_img
         journal.append(entry)
-        save_json(journal_path, journal)
+        journal_add(journal_path, entry)
     if no_ref and not ids_filter:
         log(f"  без референса ({len(no_ref)}): {', '.join(no_ref)}")
-    total = sum(x.get("cost_analysis", 0) + x.get("cost_image", 0) for x in journal)
+    total = sum(x.get("cost_analysis", 0) + x.get("cost_image", 0) for x in (load_json(journal_path, []) or []))
     log(f"✔ Готово: запросов {PAINTER} {n_painter}, проверок {ANALYST} {n_analyst} — ${spent:.2f} "
         f"(за всё время по {ep.name}, ReGen + Gen + ReGravure: ${total:.2f}). Журнал: {journal_path}")

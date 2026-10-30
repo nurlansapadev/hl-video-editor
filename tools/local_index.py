@@ -21,6 +21,7 @@ import urllib.request
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import usage  # noqa: E402
 from util import CHARACTERS_DIR, EDIT_DIR, ROOT, load_json, log, save_json  # noqa: E402
 
 IMAGE_EXT = {".jpg", ".jpeg", ".png", ".webp"}
@@ -108,6 +109,7 @@ def describe_openai(batch: list[dict], key: str, model: str) -> list[dict] | Non
                                          headers={"Content-Type": "application/json", "Authorization": f"Bearer {key}"})
             with urllib.request.urlopen(req, timeout=120) as r:
                 res = json.loads(r.read().decode())
+            usage.add("OpenAI", model, usage.openai_usd(model, res.get("usage")), "описание своих кадров")
             data = json.loads(res["choices"][0]["message"]["content"])
             items = data.get("items") if isinstance(data, dict) else data
             return [v for v in items or [] if isinstance(v, dict)]
@@ -139,6 +141,7 @@ def describe(batch: list[dict], key: str) -> list[dict] | None:
                                              headers={"Content-Type": "application/json", "x-goog-api-key": key})
                 with urllib.request.urlopen(req, timeout=120) as r:
                     res = json.loads(r.read().decode())
+                usage.add("Gemini", model, usage.gemini_usd(model, res), "описание своих кадров")
                 text = "".join(p.get("text", "") for p in res["candidates"][0]["content"]["parts"])
                 data = json.loads(re.sub(r"^```(?:json)?|```$", "", text.strip(), flags=re.M).strip())
                 return [v for v in data if isinstance(v, dict)]

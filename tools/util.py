@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import os
+import time
 import re
 import shutil
 import subprocess
@@ -102,6 +103,32 @@ def load_json(path: Path, default=None):
 def save_json(path: Path, data) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
+def journal_add(path: Path, entry: dict) -> None:
+    """Дописать запись в общий журнал-список (work/regen.json) под блокировкой файла: Gen, ReGen, ReGravure и Gemini
+    часто идут параллельными процессами — раньше каждый перезаписывал журнал своей копией и стирал чужие записи (EP-14)."""
+    lock = path.with_suffix(path.suffix + ".lock")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    t0 = time.time()
+    while True:
+        try:
+            fd = os.open(str(lock), os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+            break
+        except FileExistsError:
+            if time.time() - t0 > 30 or (lock.exists() and time.time() - lock.stat().st_mtime > 60):
+                lock.unlink(missing_ok=True)  # зависшая блокировка (процесс убит)
+                continue
+            time.sleep(0.05)
+    try:
+        data = load_json(path, []) or []
+        data.append(entry)
+        tmp = path.with_suffix(path.suffix + ".tmp")
+        tmp.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+        os.replace(tmp, path)
+    finally:
+        os.close(fd)
+        lock.unlink(missing_ok=True)
 
 
 def rel(path: Path, base: Path) -> str:

@@ -30,7 +30,7 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from pathlib import Path
 
-from util import CHARACTERS_DIR, EDIT_DIR, GENERATED_DIR, ROOT, load_json, log, save_json
+from util import CHARACTERS_DIR, EDIT_DIR, GENERATED_DIR, ROOT, load_json, log, journal_add, save_json
 
 ANALYST = "gpt-4.1-mini"
 PAINTER = "gpt-image-2.5-sunburst"
@@ -256,11 +256,11 @@ def run(ep: Path, shots_filter: set[int] | None = None, force: bool = False, dry
         with lock:
             n["spent"] += g["cost_analysis"] + g["cost_image"]
             journal.append(g)
-            save_json(journal_path, journal)
+            journal_add(journal_path, g)
 
     def do(job: tuple[dict, int, Path, Path]) -> None:
         shot, no, ref, out = job
-        entry = {"date": datetime.now().isoformat(timespec="seconds"), "shot": no, "ref": ref.name, "out": out.name,
+        entry = {"date": datetime.now().isoformat(timespec="seconds"), "tool": "regen", "shot": no, "ref": ref.name, "out": out.name,
                  "size": SIZE, "quality": QUALITY}
         c_an = c_img = 0.0
         try:
@@ -314,7 +314,7 @@ def run(ep: Path, shots_filter: set[int] | None = None, force: bool = False, dry
         with lock:
             n["spent"] += c_an + c_img
             journal.append(entry)
-            save_json(journal_path, journal)
+            journal_add(journal_path, entry)
         if entry.get("status") == "error" and not dry:
             _gemini_fallback("regen", shot, ref, out, entry)
 
@@ -322,6 +322,6 @@ def run(ep: Path, shots_filter: set[int] | None = None, force: bool = False, dry
         log(f"  картинок: {len(jobs)}, одновременно до {PARALLEL}")
     with ThreadPoolExecutor(max_workers=PARALLEL) as ex:
         list(ex.map(do, jobs))
-    total = sum(x.get("cost_analysis", 0) + x.get("cost_image", 0) for x in journal)
+    total = sum(x.get("cost_analysis", 0) + x.get("cost_image", 0) for x in (load_json(journal_path, []) or []))
     log(f"✔ Готово: запросов {PAINTER} {n['painter']}, анализ {ANALYST} {n['analyst']} — ${n['spent']:.2f} "
         f"(за всё время по {ep.name}: ${total:.2f}). Журнал: {journal_path}")

@@ -20,6 +20,7 @@ import sys
 from pathlib import Path
 
 from image_gemini import ANALYSTS, _call, _key
+import usage
 from music_library import INDEX, LIB, sha1
 from util import AUDIO_EXT, CLEAN_SCRIPT, MUSIC_DIR, PRODUCTION, VO_DIR, edit_dir, load_json, log, save_json
 
@@ -118,6 +119,7 @@ def ask_gemini(segs: list[dict], tracks: list[dict], last_ep: str | None) -> dic
     for model in ANALYSTS:
         try:
             res = _call(model, [{"text": prompt}], _key(), {"responseMimeType": "application/json", "temperature": 0.3})
+            usage.add("Gemini", model, usage.gemini_usd(model, res), "подбор музыки")
             return json.loads(res["candidates"][0]["content"]["parts"][0]["text"])
         except Exception as e:  # noqa: BLE001
             last = e
@@ -208,4 +210,11 @@ def main(name: str, dry: bool = False) -> None:
 
 
 if __name__ == "__main__":
-    main(sys.argv[1], "--dry" in sys.argv)
+    import time
+    t0, ok = time.time(), False
+    try:
+        main(sys.argv[1], "--dry" in sys.argv)
+        ok = True
+    finally:
+        if "--dry" not in sys.argv:
+            usage.flush(edit_dir(sys.argv[1]), "music_pick", time.time() - t0, ok)

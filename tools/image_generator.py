@@ -27,7 +27,7 @@ from pathlib import Path
 
 from image_regenerator import (ANALYST, CHECK_PROMPT, FORMAT, MAX_RETRIES, PARALLEL, PASS_SCORE, QUALITY, REF_EXT, SIZE,
                                _ask, is_video, _blocked_person, _cost, _key, _open, _task_text)
-from util import CHARACTERS_DIR, EDIT_DIR, GENERATED_DIR, load_json, log, save_json
+from util import CHARACTERS_DIR, EDIT_DIR, GENERATED_DIR, load_json, log, journal_add, save_json
 
 PAINTER = "gpt-image-2.5-flare"  # генерация с нуля — быстрая модель (ReGen по референсу — sunburst)
 PROMPT_SUFFIX = "16:9 photograph, period-accurate."
@@ -119,7 +119,7 @@ def run(ep: Path, shots_filter: set[int] | None = None, force: bool = False, dry
         with lock:
             n["spent"] += g["cost_analysis"] + g["cost_image"]
             journal.append(g)
-            save_json(journal_path, journal)
+            journal_add(journal_path, g)
 
     def do(job: tuple[dict, int, Path, str]) -> None:
         shot, no, out, prompt = job
@@ -163,7 +163,7 @@ def run(ep: Path, shots_filter: set[int] | None = None, force: bool = False, dry
         with lock:
             n["spent"] += c_an + c_img
             journal.append(entry)
-            save_json(journal_path, journal)
+            journal_add(journal_path, entry)
         if entry.get("status") == "error" and not dry:
             _gemini_fallback("gen", shot, None, out, entry)
 
@@ -171,6 +171,6 @@ def run(ep: Path, shots_filter: set[int] | None = None, force: bool = False, dry
         log(f"  картинок: {len(jobs)}, одновременно до {PARALLEL}")
     with ThreadPoolExecutor(max_workers=PARALLEL) as ex:
         list(ex.map(do, jobs))
-    total = sum(x.get("cost_analysis", 0) + x.get("cost_image", 0) for x in journal)
+    total = sum(x.get("cost_analysis", 0) + x.get("cost_image", 0) for x in (load_json(journal_path, []) or []))
     log(f"✔ Готово: запросов {PAINTER} {n['painter']}, проверок {ANALYST} {n['analyst']} — ${n['spent']:.2f} "
         f"(за всё время по {ep.name}, ReGen + Gen: ${total:.2f}). Журнал: {journal_path}")
